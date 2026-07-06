@@ -1,0 +1,58 @@
+{
+  "name": "@zkred/did-webvh",
+  "version": "0.1.0",
+  "description": "did:webvh resolution as a did-resolver plugin — thin adapter over didwebvh-ts",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zkred/did-methods.git",
+    "directory": "packages/did-webvh"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@zkred/did-core": "workspace:^",
+    "didwebvh-ts": "^2.8.0"
+  },
+  "peerDependencies": {
+    "did-resolver": "^4.1.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "did-resolver": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "did-resolver": "^5.0.1"
+  },
+  "keywords": [
+    "did",
+    "did:webvh",
+    "webvh",
+    "decentralized-identifiers",
+    "did-resolver",
+    "ssi"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

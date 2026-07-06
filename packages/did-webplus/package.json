@@ -1,0 +1,58 @@
+{
+  "name": "@zkred/did-webplus",
+  "version": "0.1.0",
+  "description": "did:webplus DID method for JavaScript/TypeScript — parsing, resolution, and microledger validation",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zkred/did-methods.git",
+    "directory": "packages/did-webplus"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@zkred/did-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "did-resolver": "^4.1.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "did-resolver": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "did-resolver": "^5.0.1"
+  },
+  "keywords": [
+    "did",
+    "did:webplus",
+    "webplus",
+    "decentralized-identifiers",
+    "did-resolver",
+    "microledger",
+    "ssi"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
