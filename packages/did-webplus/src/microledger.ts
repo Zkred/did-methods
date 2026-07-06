@@ -10,16 +10,20 @@ export interface MicroledgerValidationResult {
   errors: MicroledgerValidationError[];
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Pluggable cryptographic verifier for microledger entries.
  *
- * Structural validation (chaining, version ordering, timestamps) is
- * implemented natively by `validateMicroledger`. Verifying self-hashes and
- * update proofs requires the `selfhash` self-addressing computation and JWS
- * verification against `updateRules`; supply an implementation of this
- * interface to enforce them. Full built-in cryptographic verification,
- * validated against the Rust reference implementation's test vectors, is on
- * the roadmap.
+ * `validateMicroledger` uses the built-in `WebplusCryptoVerifier` by default
+ * (self-hash verification via JCS + multihash, Ed25519 JWS proofs checked
+ * against `updateRules`). Supply your own implementation to customize, or
+ * pass `verifier: null` to run structural validation only.
+ *
+ * Implementations may either return `false` or throw an `Error` to fail a
+ * check; a thrown error's message is surfaced in the validation result.
  */
 export interface CryptoVerifier {
   /** Return true if `doc.selfHash` is the correct self-hash of `doc`. */
@@ -39,12 +43,16 @@ export interface CryptoVerifier {
  * - the root document has no `prevDIDDocumentSelfHash`
  * - each non-root document links to its predecessor's `selfHash` and carries proofs
  * - `validFrom` timestamps are strictly increasing
- * - optionally, self-hashes and proofs verify via the supplied `CryptoVerifier`
+ * - self-hashes and proofs verify cryptographically (built-in by default;
+ *   pass `verifier: null` for structural checks only)
  */
 export async function validateMicroledger(
   docs: WebplusDidDocument[],
-  options: { expectedDid?: string; verifier?: CryptoVerifier } = {},
+  options: { expectedDid?: string; verifier?: CryptoVerifier | null } = {},
 ): Promise<MicroledgerValidationResult> {
+  const { WebplusCryptoVerifier } = await import("./verifier.js");
+  const verifier =
+    options.verifier === null ? undefined : (options.verifier ?? new WebplusCryptoVerifier());
   const errors: MicroledgerValidationError[] = [];
   const report = (versionId: number, message: string) => errors.push({ versionId, message });
 
@@ -97,12 +105,25 @@ export async function validateMicroledger(
       }
     }
 
-    if (options.verifier) {
-      if (!(await options.verifier.verifySelfHash(doc))) {
-        report(doc.versionId, "selfHash verification failed");
+    if (verifier) {
+      try {
+        if (!(await verifier.verifySelfHash(doc))) {
+          report(doc.versionId, "selfHash verification failed");
+        }
+      } catch (err) {
+        report(doc.versionId, `selfHash verification failed: ${errorMessage(err)}`);
       }
-      if (i > 0 && !(await options.verifier.verifyProofs(doc, prev))) {
-        report(doc.versionId, "proofs do not satisfy previous document's updateRules");
+      if (i > 0) {
+        try {
+          if (!(await verifier.verifyProofs(doc, prev))) {
+            report(doc.versionId, "proofs do not satisfy previous document's updateRules");
+          }
+        } catch (err) {
+          report(
+            doc.versionId,
+            `proofs do not satisfy previous document's updateRules: ${errorMessage(err)}`,
+          );
+        }
       }
     }
 

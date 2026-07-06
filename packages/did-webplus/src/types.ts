@@ -2,15 +2,19 @@ import type { DidDocument } from "@zkred/did-core";
 
 /**
  * Update rules govern which proofs are required for the next DID document in
- * the microledger. See the did:webplus spec:
- * https://ledgerdomain.github.io/did-webplus-spec
+ * the microledger. An empty object means updates are disallowed. See the
+ * did:webplus spec: https://ledgerdomain.github.io/did-webplus-spec
  */
 export type UpdateRules =
   | { key: string }
   | { hashedKey: string }
   | { any: UpdateRules[] }
   | { all: UpdateRules[] }
-  | Record<string, unknown>;
+  | { atLeast: number; of: WeightedUpdateRules[] }
+  | Record<string, never>;
+
+/** An updateRules entry inside `of`, optionally carrying a weight (default 1). */
+export type WeightedUpdateRules = UpdateRules & { weight?: number };
 
 /**
  * A did:webplus DID document — one entry in the DID's microledger.
