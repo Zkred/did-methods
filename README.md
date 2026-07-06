@@ -1,5 +1,9 @@
 # did-methods
 
+[![CI](https://github.com/Zkred/did-methods/actions/workflows/ci.yml/badge.svg)](https://github.com/Zkred/did-methods/actions/workflows/ci.yml)
+[![did-webplus](https://img.shields.io/npm/v/%40zkred%2Fdid-webplus?label=%40zkred%2Fdid-webplus)](https://www.npmjs.com/package/@zkred/did-webplus)
+[![did-webvh](https://img.shields.io/npm/v/%40zkred%2Fdid-webvh?label=%40zkred%2Fdid-webvh)](https://www.npmjs.com/package/@zkred/did-webvh)
+
 TypeScript implementations of web-based [DID methods](https://www.w3.org/TR/did-core/),
 published as small per-method packages that plug into the
 [`did-resolver`](https://www.npmjs.com/package/did-resolver) ecosystem.
