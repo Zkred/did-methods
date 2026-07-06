@@ -7,3 +7,5 @@ export * from "./jws.js";
 export * from "./selfhash.js";
 export * from "./updateRules.js";
 export * from "./verifier.js";
+export * from "./sign.js";
+export * from "./controller.js";

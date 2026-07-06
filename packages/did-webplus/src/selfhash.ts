@@ -172,3 +172,17 @@ export function proofSigningInput(doc: WebplusDidDocument): Uint8Array {
   delete prepared.proofs;
   return utf8Encode(canonicalize(prepared));
 }
+
+/**
+ * Compute the document's self-hash and return a copy with every self-hash
+ * slot filled in. The hash function is taken from the current `selfHash`
+ * value (typically the placeholder installed at construction time). Any
+ * `proofs` present are part of the hashed data, so proofs must be attached
+ * *before* self-hashing.
+ */
+export function selfHashDocument(doc: WebplusDidDocument): WebplusDidDocument {
+  const placeholder = placeholderMbHash(doc.selfHash);
+  const prepared = withSelfHashSlotsSetTo(doc, placeholder);
+  const digest = hashAsMbHash(placeholder, utf8Encode(canonicalize(prepared)));
+  return withSelfHashSlotsSetTo(prepared, digest);
+}

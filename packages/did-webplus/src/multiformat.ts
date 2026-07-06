@@ -27,6 +27,17 @@ const HASH_FUNCTIONS: Record<number, { name: string; fn: HashFn }> = {
 
 const ED25519_PUB_CODE = 0xed;
 
+/** Hash function names accepted where a hash function must be chosen (e.g. DID creation). */
+export type HashFunctionName = "blake3" | "sha2-256" | "sha2-512" | "sha2-384" | "sha2-224";
+
+const HASH_CODE_BY_NAME: Record<HashFunctionName, number> = {
+  "sha2-256": 0x12,
+  "sha2-512": 0x13,
+  blake3: 0x1e,
+  "sha2-384": 0x20,
+  "sha2-224": 0x1013,
+};
+
 export interface ParsedMbHash {
   /** Multicodec hash function code (e.g. 0x1e for BLAKE3). */
   code: number;
@@ -83,6 +94,29 @@ export function hashAsMbHash(templateMbHash: string, data: Uint8Array): string {
   const { code } = parseMbHash(templateMbHash);
   const digest = requireHashFunction(code).fn(data);
   return encodeMbHash(code, digest);
+}
+
+/** Hash `data` with a hash function chosen by name, producing an MBHash string. */
+export function hashWithFunction(name: HashFunctionName, data: Uint8Array): string {
+  const code = HASH_CODE_BY_NAME[name];
+  if (code === undefined) {
+    throw new TypeError(`unsupported hash function name: ${name}`);
+  }
+  const digest = requireHashFunction(code).fn(data);
+  return encodeMbHash(code, digest);
+}
+
+/** The all-zeros placeholder MBHash for a hash function chosen by name. */
+export function placeholderForFunction(name: HashFunctionName): string {
+  return placeholderMbHash(hashWithFunction(name, new Uint8Array(0)));
+}
+
+/** Encode raw Ed25519 public key bytes as a multibase multicodec key string (`u7Q...`). */
+export function formatMbPubKey(keyBytes: Uint8Array): string {
+  if (keyBytes.length !== 32) {
+    throw new TypeError(`ed25519 public key must be 32 bytes, got ${keyBytes.length}`);
+  }
+  return `u${base64urlEncode(concatBytes(varintEncode(ED25519_PUB_CODE), keyBytes))}`;
 }
 
 /** Decode a multibase multicodec public key like `u7QG2O2Vm...` into raw Ed25519 key bytes. */
