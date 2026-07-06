@@ -1,6 +1,6 @@
 {
   "name": "@zkred/did-webvh",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "did:webvh resolution as a did-resolver plugin — thin adapter over didwebvh-ts",
   "license": "Apache-2.0",
   "repository": {
