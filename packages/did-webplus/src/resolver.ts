@@ -23,6 +23,36 @@ export interface WebplusResolverOptions extends ResolutionUrlOptions {
   verify?: boolean;
   /** Verifier used when `verify` is set; defaults to the built-in one. `null` = structural only. */
   verifier?: CryptoVerifier | null;
+  /**
+   * Resolve through a Verifiable Data Gateway instead of contacting the
+   * DID's VDR directly. A hostname (`vdg.example.com`) or base URL. The VDG's
+   * `/webplus/v1/resolve` and `/webplus/v1/fetch` endpoints are used.
+   */
+  vdg?: string;
+}
+
+/** Normalize a VDG hostname or base URL into a base URL without a trailing slash. */
+function vdgBaseUrl(vdg: string, scheme: "https" | "http" = "https"): string {
+  const base = vdg.includes("://") ? vdg : `${scheme}://${vdg}`;
+  return base.replace(/\/+$/, "");
+}
+
+/** The URL the VDG serves a DID query's document at. */
+export function vdgResolutionUrl(
+  didQuery: string,
+  vdg: string,
+  options: ResolutionUrlOptions = {},
+): string {
+  return `${vdgBaseUrl(vdg, options.scheme)}/webplus/v1/resolve/${encodeURIComponent(didQuery)}`;
+}
+
+/** The URL the VDG serves a DID's complete microledger at. */
+export function vdgMicroledgerUrl(
+  did: string,
+  vdg: string,
+  options: ResolutionUrlOptions = {},
+): string {
+  return `${vdgBaseUrl(vdg, options.scheme)}/webplus/v1/fetch/${encodeURIComponent(did)}/did-documents.jsonl`;
 }
 
 /**
@@ -33,7 +63,7 @@ export async function fetchMicroledger(
   did: string,
   options: WebplusResolverOptions = {},
 ): Promise<WebplusDidDocument[]> {
-  const url = microledgerUrl(did, options);
+  const url = options.vdg ? vdgMicroledgerUrl(did, options.vdg, options) : microledgerUrl(did, options);
   const fetchImpl = options.fetchImpl ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 15_000);
@@ -175,7 +205,9 @@ export async function resolve(
       return await resolveVerified(parsed.did, query, options);
     }
 
-    const url = resolutionUrl(parsed, query, options);
+    const url = options.vdg
+      ? vdgResolutionUrl(beforeFragment!, options.vdg, options)
+      : resolutionUrl(parsed, query, options);
     const doc = await fetchJson<WebplusDidDocument>(url, {
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),

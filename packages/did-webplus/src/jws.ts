@@ -1,13 +1,32 @@
 import { base64urlDecode, concatBytes, utf8Encode } from "@zkred/did-core";
 import { ed25519 } from "@noble/curves/ed25519";
-import { parseMbPubKey } from "./multiformat.js";
+import { secp256k1 } from "@noble/curves/secp256k1";
+import { p256 } from "@noble/curves/p256";
+import { sha256 } from "@noble/hashes/sha2";
+import { parseMbPubKey, type CurveName } from "./multiformat.js";
 
 /**
  * did:webplus proofs are compact JWS with a detached, unencoded payload
- * (RFC 7797, `"b64": false`), signed with Ed25519. The `kid` header carries
- * the multibase multicodec public key itself, so verification needs no key
- * lookup.
+ * (RFC 7797, `"b64": false`). The `kid` header carries the multibase
+ * multicodec public key itself, so verification needs no key lookup.
+ *
+ * Supported algorithms (matching the reference implementation's JOSE names):
+ * `Ed25519` (and standard `EdDSA`), `ES256K` (secp256k1), `ES256` (P-256).
  */
+
+/** The JOSE `alg` value used for each curve. */
+export const JOSE_ALG_BY_CURVE: Record<CurveName, string> = {
+  ed25519: "Ed25519",
+  secp256k1: "ES256K",
+  p256: "ES256",
+};
+
+const CURVE_BY_JOSE_ALG: Record<string, CurveName> = {
+  Ed25519: "ed25519",
+  EdDSA: "ed25519",
+  ES256K: "secp256k1",
+  ES256: "p256",
+};
 
 export interface JwsHeader {
   alg: string;
@@ -38,7 +57,7 @@ export function parseDetachedJws(jws: string): ParsedJws {
   } catch {
     throw new TypeError("JWS protected header is not valid base64url JSON");
   }
-  if (header.alg !== "Ed25519" && header.alg !== "EdDSA") {
+  if (!(header.alg in CURVE_BY_JOSE_ALG)) {
     throw new TypeError(`unsupported JWS alg: ${header.alg}`);
   }
   if (header.b64 !== false || !header.crit?.includes("b64")) {
@@ -50,6 +69,22 @@ export function parseDetachedJws(jws: string): ParsedJws {
   return { protectedB64, header, signature: base64urlDecode(signatureB64) };
 }
 
+function verifySignature(
+  curve: CurveName,
+  signature: Uint8Array,
+  signingInput: Uint8Array,
+  publicKey: Uint8Array,
+): boolean {
+  switch (curve) {
+    case "ed25519":
+      return ed25519.verify(signature, signingInput, publicKey);
+    case "secp256k1":
+      return secp256k1.verify(signature, sha256(signingInput), publicKey);
+    case "p256":
+      return p256.verify(signature, sha256(signingInput), publicKey);
+  }
+}
+
 /**
  * Verify a detached unencoded-payload JWS over `payload`.
  * Returns the verified signer's public key (the `kid`, a multibase multicodec
@@ -57,10 +92,13 @@ export function parseDetachedJws(jws: string): ParsedJws {
  */
 export function verifyDetachedJws(jws: string, payload: Uint8Array): string {
   const { protectedB64, header, signature } = parseDetachedJws(jws);
-  const { keyBytes } = parseMbPubKey(header.kid);
+  const { curve, keyBytes } = parseMbPubKey(header.kid);
+  if (CURVE_BY_JOSE_ALG[header.alg] !== curve) {
+    throw new TypeError(`JWS alg ${header.alg} does not match kid key type ${curve}`);
+  }
   // RFC 7797 with b64=false: signing input is ASCII(protected || '.') || payload.
   const signingInput = concatBytes(utf8Encode(`${protectedB64}.`), payload);
-  if (!ed25519.verify(signature, signingInput, keyBytes)) {
+  if (!verifySignature(curve, signature, signingInput, keyBytes)) {
     throw new TypeError("JWS signature verification failed");
   }
   return header.kid;

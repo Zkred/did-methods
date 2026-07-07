@@ -5,10 +5,11 @@ import {
   hashWithFunction,
   placeholderForFunction,
   placeholderMbHash,
+  type CurveName,
   type HashFunctionName,
 } from "./multiformat.js";
 import { selfHashDocument } from "./selfhash.js";
-import { ed25519PublicKeyJwkX, signProof, type Ed25519KeyPair } from "./sign.js";
+import { publicKeyJwkParams, signProof, type SigningKeyPair } from "./sign.js";
 import type { UpdateRules, WebplusDidDocument } from "./types.js";
 import type { VerificationMethod } from "@zkred/did-core";
 
@@ -29,15 +30,17 @@ const ALL_PURPOSES: KeyPurpose[] = [
 
 /** A verification method to include in a DID document. */
 export interface VerificationKey {
-  /** Raw Ed25519 public key bytes (32 bytes). */
+  /** Raw public key bytes: 32 for Ed25519, 33 (compressed point) for EC curves. */
   publicKey: Uint8Array;
+  /** Signature curve. Defaults to Ed25519. */
+  curve?: CurveName;
   /** Key purposes this key serves. Defaults to all five. */
   purposes?: KeyPurpose[];
 }
 
 /** Build a `{ key }` update rule authorizing this public key directly. */
-export function keyRule(publicKey: Uint8Array): UpdateRules {
-  return { key: formatMbPubKey(publicKey) };
+export function keyRule(publicKey: Uint8Array, curve: CurveName = "ed25519"): UpdateRules {
+  return { key: formatMbPubKey(publicKey, curve) };
 }
 
 /**
@@ -48,8 +51,11 @@ export function keyRule(publicKey: Uint8Array): UpdateRules {
 export function hashedKeyRule(
   publicKey: Uint8Array,
   hashFunction: HashFunctionName = "blake3",
+  curve: CurveName = "ed25519",
 ): UpdateRules {
-  return { hashedKey: hashWithFunction(hashFunction, utf8Encode(formatMbPubKey(publicKey))) };
+  return {
+    hashedKey: hashWithFunction(hashFunction, utf8Encode(formatMbPubKey(publicKey, curve))),
+  };
 }
 
 export interface CreateDidDocumentOptions {
@@ -68,7 +74,7 @@ export interface CreateDidDocumentOptions {
   /** Hash function for the self-hash. Defaults to BLAKE3, matching the reference implementation. */
   hashFunction?: HashFunctionName;
   /** Optional signers producing root-level proofs (not required by the spec). */
-  signers?: Ed25519KeyPair[];
+  signers?: SigningKeyPair[];
 }
 
 function buildVerificationMethods(
@@ -93,9 +99,7 @@ function buildVerificationMethods(
       controller: did,
       publicKeyJwk: {
         kid: id,
-        kty: "OKP",
-        crv: "Ed25519",
-        x: ed25519PublicKeyJwkX(key.publicKey),
+        ...publicKeyJwkParams(key.publicKey, key.curve ?? "ed25519"),
       },
     });
     for (const purpose of key.purposes ?? ALL_PURPOSES) {
@@ -148,7 +152,7 @@ export interface UpdateDidDocumentOptions {
   /** Rules that authorize the update *after* this one. */
   updateRules: UpdateRules;
   /** Signers whose proofs must satisfy the previous document's updateRules. */
-  signers: Ed25519KeyPair[];
+  signers: SigningKeyPair[];
   /** RFC 3339 timestamp; defaults to now. Must be later than the previous document's. */
   validFrom?: string;
   /** Hash function for the self-hash. Defaults to the previous document's. */

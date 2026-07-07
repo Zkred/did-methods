@@ -25,7 +25,28 @@ const HASH_FUNCTIONS: Record<number, { name: string; fn: HashFn }> = {
   0x1013: { name: "sha2-224", fn: sha224 },
 };
 
-const ED25519_PUB_CODE = 0xed;
+/** Supported signature curves and their multicodec public-key codes. */
+export type CurveName = "ed25519" | "secp256k1" | "p256";
+
+const PUB_KEY_CODE_BY_CURVE: Record<CurveName, number> = {
+  ed25519: 0xed,
+  secp256k1: 0xe7,
+  p256: 0x1200,
+};
+
+/** Raw key byte length per curve: 32 for Ed25519, 33 (compressed point) for the EC curves. */
+const PUB_KEY_LENGTH_BY_CURVE: Record<CurveName, number> = {
+  ed25519: 32,
+  secp256k1: 33,
+  p256: 33,
+};
+
+const CURVE_BY_PUB_KEY_CODE = new Map<number, CurveName>(
+  (Object.entries(PUB_KEY_CODE_BY_CURVE) as Array<[CurveName, number]>).map(([name, code]) => [
+    code,
+    name,
+  ]),
+);
 
 /** Hash function names accepted where a hash function must be chosen (e.g. DID creation). */
 export type HashFunctionName = "blake3" | "sha2-256" | "sha2-512" | "sha2-384" | "sha2-224";
@@ -111,26 +132,31 @@ export function placeholderForFunction(name: HashFunctionName): string {
   return placeholderMbHash(hashWithFunction(name, new Uint8Array(0)));
 }
 
-/** Encode raw Ed25519 public key bytes as a multibase multicodec key string (`u7Q...`). */
-export function formatMbPubKey(keyBytes: Uint8Array): string {
-  if (keyBytes.length !== 32) {
-    throw new TypeError(`ed25519 public key must be 32 bytes, got ${keyBytes.length}`);
+/**
+ * Encode raw public key bytes as a multibase multicodec key string
+ * (e.g. `u7Q...` for Ed25519). EC curves expect the 33-byte compressed point,
+ * matching the reference implementation's `mbx` crate.
+ */
+export function formatMbPubKey(keyBytes: Uint8Array, curve: CurveName = "ed25519"): string {
+  const expected = PUB_KEY_LENGTH_BY_CURVE[curve];
+  if (keyBytes.length !== expected) {
+    throw new TypeError(`${curve} public key must be ${expected} bytes, got ${keyBytes.length}`);
   }
-  return `u${base64urlEncode(concatBytes(varintEncode(ED25519_PUB_CODE), keyBytes))}`;
+  return `u${base64urlEncode(concatBytes(varintEncode(PUB_KEY_CODE_BY_CURVE[curve]), keyBytes))}`;
 }
 
-/** Decode a multibase multicodec public key like `u7QG2O2Vm...` into raw Ed25519 key bytes. */
-export function parseMbPubKey(mbPubKey: string): { codecName: string; keyBytes: Uint8Array } {
+/** Decode a multibase multicodec public key like `u7QG2O2Vm...` into its curve and raw key bytes. */
+export function parseMbPubKey(mbPubKey: string): { curve: CurveName; keyBytes: Uint8Array } {
   const bytes = decodeMultibase(mbPubKey, "MBPubKey");
   const code = varintDecode(bytes, 0);
-  if (code.value !== ED25519_PUB_CODE) {
-    throw new TypeError(
-      `unsupported public key multicodec 0x${code.value.toString(16)} (only ed25519-pub is supported)`,
-    );
+  const curve = CURVE_BY_PUB_KEY_CODE.get(code.value);
+  if (!curve) {
+    throw new TypeError(`unsupported public key multicodec 0x${code.value.toString(16)}`);
   }
   const keyBytes = bytes.subarray(code.length);
-  if (keyBytes.length !== 32) {
-    throw new TypeError(`ed25519 public key must be 32 bytes, got ${keyBytes.length}`);
+  const expected = PUB_KEY_LENGTH_BY_CURVE[curve];
+  if (keyBytes.length !== expected) {
+    throw new TypeError(`${curve} public key must be ${expected} bytes, got ${keyBytes.length}`);
   }
-  return { codecName: "ed25519-pub", keyBytes };
+  return { curve, keyBytes };
 }

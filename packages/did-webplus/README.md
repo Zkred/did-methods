@@ -122,8 +122,29 @@ The `did:webplus` spec itself is still marked *proposed*. Roadmap:
 - [x] Full-microledger fetch-and-verify during resolution (`verify: true`)
 - [x] `versionTime` resolution
 - [x] DID creation and update (controller operations) against a VDR
-- [ ] Verifiable Data Gateway (VDG) support
-- [ ] secp256k1 / P-256 verification methods (reference implementation supports Ed25519 today)
+- [x] Verifiable Data Gateway (VDG) support (`vdg` resolver option)
+- [x] secp256k1 (ES256K) and P-256 (ES256) keys and proofs alongside Ed25519
+
+### VDG resolution
+
+Pass `vdg` to resolve through a Verifiable Data Gateway instead of the DID's
+VDR — the VDG's `/webplus/v1/resolve` endpoint serves single documents, and
+`/webplus/v1/fetch/…/did-documents.jsonl` serves full microledgers for
+`verify: true`:
+
+```ts
+const resolver = new Resolver(getResolver({ vdg: "vdg.example.com", verify: true }));
+```
+
+### Signature curves
+
+Ed25519 (`Ed25519`), secp256k1 (`ES256K`), and P-256 (`ES256`) are supported
+for verification methods, proofs, and update rules — key pairs via
+`ed25519KeyPair` / `secp256k1KeyPair` / `p256KeyPair`, with EC public keys
+encoded as 33-byte compressed points per the reference implementation's
+multicodec conventions. Note: Ed25519 is conformance-tested against published
+reference vectors; the reference implementation has not yet published EC
+vectors, so EC support is validated by internal round-trip today.
 
 Contributions welcome: https://github.com/Zkred/did-methods
 
