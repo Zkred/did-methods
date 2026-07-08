@@ -10,7 +10,7 @@ published as small per-method packages that plug into the
 
 | Package | Method | What it is |
 | --- | --- | --- |
-| [`@zkred/did-webplus`](packages/did-webplus) | [`did:webplus`](https://ledgerdomain.github.io/did-webplus-spec) | First JavaScript implementation — DID parsing, resolution, and microledger validation |
+| [`@zkred/did-webplus`](packages/did-webplus) | [`did:webplus`](https://ledgerdomain.github.io/did-webplus-spec) | First TS/JS-native implementation: parsing, verified resolution, controller operations |
 | [`@zkred/did-webvh`](packages/did-webvh) | [`did:webvh`](https://identity.foundation/didwebvh/) | Thin `did-resolver` adapter over DIF's [`didwebvh-ts`](https://www.npmjs.com/package/didwebvh-ts) |
 | [`@zkred/did-core`](packages/did-core) | — | Shared DID data-model types, resolution errors, and HTTP utilities |
 

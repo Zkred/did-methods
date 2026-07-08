@@ -1,7 +1,8 @@
 # @zkred/did-webplus
 
 TypeScript implementation of the [`did:webplus`](https://ledgerdomain.github.io/did-webplus-spec)
-DID method — the first JavaScript implementation of the method. `did:webplus` extends the
+DID method, and the first TS/JS-native implementation (the Rust reference
+implementation also provides a WASM-backed TS/JS SDK, not yet published to npm). `did:webplus` extends the
 familiar web-hosted DID model with a self-addressed, hash-chained **microledger** of DID
 documents, giving long-term non-repudiability, auditable key rotation, and full key usage
 history.
