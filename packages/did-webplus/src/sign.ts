@@ -1,4 +1,4 @@
-import { base64urlEncode, concatBytes, utf8Encode } from "@zkred/did-core";
+import { base64urlDecode, base64urlEncode, concatBytes, utf8Encode } from "@zkred/did-core";
 import { ed25519 } from "@noble/curves/ed25519";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { p256 } from "@noble/curves/p256";
@@ -76,6 +76,44 @@ export function publicKeyJwkParams(
         y: coord(affine.y),
       };
     }
+  }
+}
+
+/**
+ * Recover raw public key bytes (and curve) from `publicKeyJwk` fields:
+ * the 32-byte key for Ed25519 (OKP), or the 33-byte compressed point
+ * rebuilt from x/y coordinates for EC curves.
+ */
+export function publicKeyBytesFromJwk(jwk: {
+  crv?: string;
+  x?: string;
+  y?: string;
+}): { curve: CurveName; publicKey: Uint8Array } {
+  if (typeof jwk.x !== "string") {
+    throw new TypeError("publicKeyJwk is missing x");
+  }
+  switch (jwk.crv) {
+    case "Ed25519":
+      return { curve: "ed25519", publicKey: base64urlDecode(jwk.x) };
+    case "secp256k1":
+    case "P-256": {
+      if (typeof jwk.y !== "string") {
+        throw new TypeError(`EC publicKeyJwk with crv ${jwk.crv} is missing y`);
+      }
+      const curve: CurveName = jwk.crv === "secp256k1" ? "secp256k1" : "p256";
+      const uncompressed = concatBytes(
+        Uint8Array.of(0x04),
+        base64urlDecode(jwk.x),
+        base64urlDecode(jwk.y),
+      );
+      const point =
+        curve === "secp256k1"
+          ? secp256k1.ProjectivePoint.fromHex(uncompressed)
+          : p256.ProjectivePoint.fromHex(uncompressed);
+      return { curve, publicKey: point.toRawBytes(true) };
+    }
+    default:
+      throw new TypeError(`unsupported publicKeyJwk crv: ${jwk.crv}`);
   }
 }
 
