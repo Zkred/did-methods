@@ -149,6 +149,18 @@ vectors, so EC support is validated by internal round-trip today.
 
 Contributions welcome: https://github.com/Zkred/did-methods
 
+## Security
+
+This package makes outbound HTTPS requests by design: resolving a DID fetches
+its document or microledger from the DID's VDR (or a VDG), and the controller
+operations POST/PUT DID documents to a VDR. Supply-chain scanners flag this as
+a network access capability; it is the package's purpose, not telemetry. No
+request is made except in response to an explicit `resolve` / `fetchMicroledger` /
+`registerDid` / `submitDidUpdate` call, and every network entry point accepts a
+`fetchImpl` option so you can inject an instrumented or policy-restricted fetch.
+Cryptographic operations use the audited [noble](https://paulmillr.com/noble/)
+libraries; keys you generate never leave your process.
+
 ## License
 
 Apache-2.0
