@@ -1,4 +1,4 @@
-import { DidError, ResolutionErrorCode, utf8Encode } from "@zkred/did-core";
+import { DidError, ResolutionErrorCode, canonicalize, utf8Encode } from "@zkred/did-core";
 import { formatDid, parseDid, type ResolutionUrlOptions } from "./did.js";
 import {
   formatMbPubKey,
@@ -194,6 +194,34 @@ export function updateDidDocument(
   return selfHashDocument(doc);
 }
 
+export interface DeactivateDidDocumentOptions {
+  /** Signers whose proofs must satisfy the previous document's updateRules. */
+  signers: SigningKeyPair[];
+  /** RFC 3339 timestamp; defaults to now. Must be later than the previous document's. */
+  validFrom?: string;
+  /** Hash function for the self-hash. Defaults to the previous document's. */
+  hashFunction?: HashFunctionName;
+}
+
+/**
+ * Create the final ("tombstone") DID document that deactivates the DID:
+ * `updateRules` is `{}` so no further update can ever be authorized, and no
+ * verification methods remain (per the spec's recommendation, so no keys are
+ * left that can't be rotated). Submit it with `submitDidUpdate`.
+ */
+export function deactivateDidDocument(
+  prev: WebplusDidDocument,
+  options: DeactivateDidDocumentOptions,
+): WebplusDidDocument {
+  return updateDidDocument(prev, {
+    keys: [],
+    updateRules: {},
+    signers: options.signers,
+    ...(options.validFrom !== undefined ? { validFrom: options.validFrom } : {}),
+    ...(options.hashFunction !== undefined ? { hashFunction: options.hashFunction } : {}),
+  });
+}
+
 export interface VdrClientOptions extends ResolutionUrlOptions {
   fetchImpl?: typeof fetch;
   /** Extra request headers (e.g. VDR authorization). */
@@ -220,7 +248,9 @@ async function submitToVdr(
   const response = await fetchImpl(url, {
     method,
     headers: { "content-type": "application/json", ...(options.headers ?? {}) },
-    body: JSON.stringify(doc),
+    // The spec requires DID documents to be in JCS (RFC 8785) form on the
+    // wire; VDRs reject non-canonical serializations.
+    body: canonicalize(doc),
   });
   if (!response.ok) {
     throw new DidError(

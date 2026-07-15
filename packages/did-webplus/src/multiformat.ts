@@ -7,6 +7,7 @@ import {
 } from "@zkred/did-core";
 import { blake3 } from "@noble/hashes/blake3";
 import { sha224, sha256, sha384, sha512 } from "@noble/hashes/sha2";
+import { sha3_224, sha3_256, sha3_384, sha3_512 } from "@noble/hashes/sha3";
 
 /**
  * Multibase-encoded multihash values ("MBHash") and multicodec public keys
@@ -20,6 +21,10 @@ type HashFn = (data: Uint8Array) => Uint8Array;
 const HASH_FUNCTIONS: Record<number, { name: string; fn: HashFn }> = {
   0x12: { name: "sha2-256", fn: sha256 },
   0x13: { name: "sha2-512", fn: sha512 },
+  0x14: { name: "sha3-512", fn: sha3_512 },
+  0x15: { name: "sha3-384", fn: sha3_384 },
+  0x16: { name: "sha3-256", fn: sha3_256 },
+  0x17: { name: "sha3-224", fn: sha3_224 },
   0x1e: { name: "blake3", fn: blake3 },
   0x20: { name: "sha2-384", fn: sha384 },
   0x1013: { name: "sha2-224", fn: sha224 },
@@ -49,11 +54,24 @@ const CURVE_BY_PUB_KEY_CODE = new Map<number, CurveName>(
 );
 
 /** Hash function names accepted where a hash function must be chosen (e.g. DID creation). */
-export type HashFunctionName = "blake3" | "sha2-256" | "sha2-512" | "sha2-384" | "sha2-224";
+export type HashFunctionName =
+  | "blake3"
+  | "sha2-256"
+  | "sha2-512"
+  | "sha2-384"
+  | "sha2-224"
+  | "sha3-256"
+  | "sha3-512"
+  | "sha3-384"
+  | "sha3-224";
 
 const HASH_CODE_BY_NAME: Record<HashFunctionName, number> = {
   "sha2-256": 0x12,
   "sha2-512": 0x13,
+  "sha3-512": 0x14,
+  "sha3-384": 0x15,
+  "sha3-256": 0x16,
+  "sha3-224": 0x17,
   blake3: 0x1e,
   "sha2-384": 0x20,
   "sha2-224": 0x1013,

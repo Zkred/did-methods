@@ -65,6 +65,10 @@ const next = updateDidDocument(root, {
   signers: [updateKey], // must satisfy root.updateRules
 });
 await submitDidUpdate(next); // PUT …/did-documents.jsonl
+
+// and, when the DID's life is over:
+const tombstone = deactivateDidDocument(next, { signers: [nextKey] });
+await submitDidUpdate(tombstone); // updateRules {} makes this permanent
 ```
 
 Documents are constructed exactly as the reference implementation does:
@@ -97,7 +101,7 @@ Validation is cryptographic by default:
 
 - **Self-hash verification** — every document's `selfHash` is recomputed via the
   selfhash self-addressing scheme (JCS/RFC 8785 canonicalization + multibase
-  multihash; BLAKE3 and the SHA-2 family), including all self-hash slots in the
+  multihash; BLAKE3, SHA-2, and SHA-3 families), including all self-hash slots in the
   `id`, verification method ids/kids, and controllers.
 - **Proof verification** — each update's detached Ed25519 JWS proofs
   (RFC 7797, `b64: false`) are verified and checked against the predecessor
@@ -117,7 +121,7 @@ Lower-level primitives are exported too: `verifyDocumentSelfHash`,
 
 The `did:webplus` spec itself is still marked *proposed*. Roadmap:
 
-- [x] Built-in self-hash verification (selfhash self-addressing scheme, BLAKE3 + SHA-2)
+- [x] Built-in self-hash verification (selfhash self-addressing scheme, BLAKE3 + SHA-2 + SHA-3)
 - [x] Built-in JWS proof verification against `updateRules` (key / hashedKey / any / all / threshold rules)
 - [x] Conformance testing against the Rust reference implementation's test vectors
 - [x] Full-microledger fetch-and-verify during resolution (`verify: true`)
