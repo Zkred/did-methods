@@ -18,14 +18,14 @@ describe("VDG URL construction", () => {
 });
 
 describe("resolution through a VDG", () => {
-  it("resolves a single document via /webplus/v1/resolve", async () => {
+  it("resolves a single document via /webplus/v1/resolve in thin mode", async () => {
     const expected = vdgResolutionUrl(DID, "vdg.example.com");
     const fetchImpl = (async (input: RequestInfo | URL) =>
       String(input) === expected
         ? new Response(JSON.stringify(secondDoc), { status: 200 })
         : new Response("nope", { status: 404 })) as typeof fetch;
 
-    const result = await resolve(DID, { vdg: "vdg.example.com", fetchImpl });
+    const result = await resolve(DID, { vdg: "vdg.example.com", verify: false, fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("1");
   });

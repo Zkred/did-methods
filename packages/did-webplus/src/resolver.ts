@@ -5,7 +5,7 @@ import {
   toErrorResult,
   type DidResolutionResult,
 } from "@zkred/did-core";
-import { parseDid, parseQuery, resolutionUrl, type ResolutionUrlOptions } from "./did.js";
+import { parseDid, parseQuery, resolutionUrl, schemeForHost, type ResolutionUrlOptions } from "./did.js";
 import { microledgerUrl } from "./controller.js";
 import { parseJcsCanonicalLines, validateMicroledger, type CryptoVerifier } from "./microledger.js";
 import type { WebplusDidDocument, WebplusDidQuery } from "./types.js";
@@ -18,7 +18,11 @@ export interface WebplusResolverOptions extends ResolutionUrlOptions {
   /**
    * Fetch the DID's complete microledger and cryptographically verify it
    * (self-hashes, proofs, updateRules, chaining) before returning the
-   * requested document. Default: false (single-document fetch).
+   * requested document. Default: **true** — verification is the point of
+   * did:webplus, and it costs the same number of HTTP requests as an
+   * unverified fetch. Set `verify: false` explicitly for thin-resolver mode,
+   * which fetches a single document and trusts the VDR/VDG the way did:web
+   * trusts its web host.
    */
   verify?: boolean;
   /** Verifier used when `verify` is set; defaults to the built-in one. `null` = structural only. */
@@ -32,9 +36,12 @@ export interface WebplusResolverOptions extends ResolutionUrlOptions {
 }
 
 /** Normalize a VDG hostname or base URL into a base URL without a trailing slash. */
-function vdgBaseUrl(vdg: string, scheme: "https" | "http" = "https"): string {
-  const base = vdg.includes("://") ? vdg : `${scheme}://${vdg}`;
-  return base.replace(/\/+$/, "");
+function vdgBaseUrl(vdg: string, options: ResolutionUrlOptions = {}): string {
+  if (vdg.includes("://")) {
+    return vdg.replace(/\/+$/, "");
+  }
+  const host = vdg.split("/")[0]!.split(":")[0]!;
+  return `${schemeForHost(host, options)}://${vdg}`.replace(/\/+$/, "");
 }
 
 /** The URL the VDG serves a DID query's document at. */
@@ -43,7 +50,7 @@ export function vdgResolutionUrl(
   vdg: string,
   options: ResolutionUrlOptions = {},
 ): string {
-  return `${vdgBaseUrl(vdg, options.scheme)}/webplus/v1/resolve/${encodeURIComponent(didQuery)}`;
+  return `${vdgBaseUrl(vdg, options)}/webplus/v1/resolve/${encodeURIComponent(didQuery)}`;
 }
 
 /** The URL the VDG serves a DID's complete microledger at. */
@@ -52,7 +59,7 @@ export function vdgMicroledgerUrl(
   vdg: string,
   options: ResolutionUrlOptions = {},
 ): string {
-  return `${vdgBaseUrl(vdg, options.scheme)}/webplus/v1/fetch/${encodeURIComponent(did)}/did-documents.jsonl`;
+  return `${vdgBaseUrl(vdg, options)}/webplus/v1/fetch/${encodeURIComponent(did)}/did-documents.jsonl`;
 }
 
 /**
@@ -194,11 +201,12 @@ async function resolveVerified(
  * Resolve a did:webplus DID URL (optionally carrying `versionId`, `selfHash`,
  * or `versionTime` query parameters) to its DID document.
  *
- * By default a single document is fetched from the VDR without cryptographic
- * verification. Pass `verify: true` to fetch the complete microledger and
- * verify it (self-hashes, Ed25519 proofs against updateRules, chaining)
- * before trusting any document. `versionTime` queries always fetch the full
- * microledger, since selecting by time requires the version history.
+ * By default the DID's complete microledger is fetched and cryptographically
+ * verified (self-hashes, proofs against updateRules, chaining, JCS wire
+ * form) before any document is returned. Pass `verify: false` explicitly for
+ * thin-resolver mode, which fetches a single document and trusts the VDR/VDG
+ * the way did:web trusts its web host. `versionTime` queries always use the
+ * full microledger, since selecting by time requires the version history.
  */
 export async function resolve(
   didUrl: string,
@@ -210,10 +218,12 @@ export async function resolve(
     const parsed = parseDid(didPart!);
     const query = parseQuery(queryPart);
 
-    if (options.verify || query.versionTime !== undefined) {
+    if (options.verify !== false || query.versionTime !== undefined) {
       return await resolveVerified(parsed.did, query, options);
     }
 
+    // Thin-resolver mode (verify: false): fetch a single document and trust
+    // the VDR/VDG, the way did:web trusts its web host.
     const url = options.vdg
       ? vdgResolutionUrl(beforeFragment!, options.vdg, options)
       : resolutionUrl(parsed, query, options);
@@ -221,7 +231,7 @@ export async function resolve(
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     });
-    return successResult(doc);
+    return successResult(doc, { verified: false });
   } catch (err) {
     return toErrorResult(err);
   }

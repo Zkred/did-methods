@@ -114,10 +114,22 @@ export function parseQuery(query: string | undefined): WebplusDidQuery {
 
 export interface ResolutionUrlOptions {
   /**
-   * URL scheme. Defaults to `https`; `http` is intended only for local
-   * development against a VDR on localhost.
+   * URL scheme. Defaults to `https`, except for localhost hosts
+   * (`localhost`, `*.localhost`, `127.0.0.1`, `::1`), which default to
+   * `http` as the spec permits for local development.
    */
   scheme?: "https" | "http";
+}
+
+/** True for hosts the spec allows to be served over plain http. */
+export function isLocalhostHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1" || h === "::1";
+}
+
+/** The scheme to use for a host when none is specified. */
+export function schemeForHost(host: string, options: ResolutionUrlOptions = {}): "https" | "http" {
+  return options.scheme ?? (isLocalhostHost(host) ? "http" : "https");
 }
 
 /**
@@ -133,7 +145,7 @@ export function resolutionUrl(
   query: WebplusDidQuery = {},
   options: ResolutionUrlOptions = {},
 ): string {
-  const scheme = options.scheme ?? "https";
+  const scheme = schemeForHost(parsed.host, options);
   const authority = parsed.port !== undefined ? `${parsed.host}:${parsed.port}` : parsed.host;
   const base = [`${scheme}:/`, authority, ...parsed.path, parsed.rootSelfHash].join("/");
 

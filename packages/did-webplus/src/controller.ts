@@ -1,5 +1,5 @@
 import { DidError, ResolutionErrorCode, canonicalize, utf8Encode } from "@zkred/did-core";
-import { formatDid, parseDid, type ResolutionUrlOptions } from "./did.js";
+import { formatDid, parseDid, schemeForHost, type ResolutionUrlOptions } from "./did.js";
 import {
   formatMbPubKey,
   hashWithFunction,
@@ -231,7 +231,7 @@ export interface VdrClientOptions extends ResolutionUrlOptions {
 /** The `did-documents.jsonl` URL a DID's microledger lives at on its VDR. */
 export function microledgerUrl(did: string, options: ResolutionUrlOptions = {}): string {
   const parsed = parseDid(did);
-  const scheme = options.scheme ?? "https";
+  const scheme = schemeForHost(parsed.host, options);
   const authority = parsed.port !== undefined ? `${parsed.host}:${parsed.port}` : parsed.host;
   return [`${scheme}:/`, authority, ...parsed.path, parsed.rootSelfHash, "did-documents.jsonl"].join(
     "/",

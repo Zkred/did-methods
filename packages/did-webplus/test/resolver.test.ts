@@ -22,17 +22,18 @@ describe("resolve", () => {
     const fetchImpl = fakeFetch({
       [`https://example.com/${ROOT_SELF_HASH}/did.json`]: secondDoc,
     });
-    const result = await resolve(DID, { fetchImpl });
+    const result = await resolve(DID, { verify: false, fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocument?.id).toBe(DID);
     expect(result.didDocumentMetadata.versionId).toBe("1");
+    expect(result.didDocumentMetadata.verified).toBe(false);
   });
 
   it("resolves a specific version via the versionId query", async () => {
     const fetchImpl = fakeFetch({
       [`https://example.com/${ROOT_SELF_HASH}/did/versionId/0.json`]: rootDoc,
     });
-    const result = await resolve(`${DID}?versionId=0`, { fetchImpl });
+    const result = await resolve(`${DID}?versionId=0`, { verify: false, fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("0");
   });
