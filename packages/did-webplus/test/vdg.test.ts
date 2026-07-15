@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { canonicalize } from "@zkred/did-core";
 import { resolve, vdgMicroledgerUrl, vdgResolutionUrl } from "../src/resolver.js";
 import { DID, rootDoc, secondDoc } from "./fixtures/microledger.js";
 
@@ -33,7 +34,7 @@ describe("resolution through a VDG", () => {
     const expected = vdgMicroledgerUrl(DID, "vdg.example.com");
     const fetchImpl = (async (input: RequestInfo | URL) =>
       String(input) === expected
-        ? new Response([rootDoc, secondDoc].map((d) => JSON.stringify(d)).join("\n"), {
+        ? new Response([rootDoc, secondDoc].map((d) => canonicalize(d)).join("\n"), {
             status: 200,
           })
         : new Response("nope", { status: 404 })) as typeof fetch;

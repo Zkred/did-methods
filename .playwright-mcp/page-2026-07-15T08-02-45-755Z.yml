@@ -1,0 +1,278 @@
+- generic [active] [ref=f15e1]:
+  - generic [ref=f15e3]:
+    - region "Site notifications" [ref=f15e4]:
+      - generic [ref=f15e8]:
+        - generic [ref=f15e9]: ⚠️
+        - alert [ref=f15e11]:
+          - text: npm tokens that bypass 2FA are being restricted — account changes (Aug 2026) and direct publishing (Jan 2027).
+          - link "Learn how to prepare for the npm bypass 2FA token deprecation" [ref=f15e12] [cursor=pointer]:
+            - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+            - text: Learn how to prepare →
+        - button "Close notification" [ref=f15e13] [cursor=pointer]: ×
+    - generic [ref=f15e14]:
+      - banner [ref=f15e15]:
+        - generic [ref=f15e16]:
+          - generic [ref=f15e17]:
+            - text: "skip to:"
+            - link "skip to content" [ref=f15e18] [cursor=pointer]:
+              - /url: "#main"
+              - text: content
+            - link "skip to package search" [ref=f15e19] [cursor=pointer]:
+              - /url: "#search"
+              - text: package search
+          - generic [ref=f15e20]:
+            - button "Light mode — click for dark" [ref=f15e21] [cursor=pointer]
+            - navigation "Product Navigation" [ref=f15e24]:
+              - list [ref=f15e25]:
+                - listitem [ref=f15e26]:
+                  - link "Pro" [ref=f15e27] [cursor=pointer]:
+                    - /url: /products/pro
+                - listitem [ref=f15e28]:
+                  - link "Teams" [ref=f15e29] [cursor=pointer]:
+                    - /url: /products/teams
+                - listitem [ref=f15e30]:
+                  - link "Pricing" [ref=f15e31] [cursor=pointer]:
+                    - /url: /products
+                - listitem [ref=f15e32]:
+                  - link "Documentation" [ref=f15e33] [cursor=pointer]:
+                    - /url: https://docs.npmjs.com
+        - generic [ref=f15e35]:
+          - generic [ref=f15e36]: npm
+          - link "Npm" [ref=f15e38] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f15e42]:
+            - combobox "Search packages" [ref=f15e52]
+            - button "Search" [ref=f15e54]
+          - navigation [ref=f15e56]:
+            - button "Profile menu" [ref=f15e57]:
+              - generic [ref=f15e58]: Menu
+      - main [ref=f15e64]:
+        - generic [ref=f15e65]:
+          - generic [ref=f15e66]:
+            - heading "@zkred/did-webplus TypeScript icon, indicating that this package has built-in type declarations" [level=1] [ref=f15e67]:
+              - generic [ref=f15e68]: "@zkred/did-webplus"
+              - img "TypeScript icon, indicating that this package has built-in type declarations" [ref=f15e70]
+            - generic [ref=f15e71]: 0.4.0 •
+            - generic [ref=f15e72]: Public
+            - generic [ref=f15e73]:
+              - text: • Published
+              - time [ref=f15e74]: 8 days ago
+          - tablist [ref=f15e75]:
+            - tab [ref=f15e76] [cursor=pointer]
+            - tab "Code Beta" [ref=f15e80] [cursor=pointer]:
+              - generic [ref=f15e81]:
+                - text: Code
+                - generic [ref=f15e84]: Beta
+            - tab [ref=f15e86] [cursor=pointer]
+            - tab [ref=f15e90] [cursor=pointer]
+            - tab [ref=f15e94] [cursor=pointer]
+            - tab [selected] [ref=f15e98] [cursor=pointer]
+          - generic [ref=f15e103]:
+            - tabpanel "Readme"
+            - tabpanel
+            - tabpanel "Settings" [ref=f15e104]:
+              - generic [ref=f15e105]:
+                - heading "Trusted Publisher" [level=1] [ref=f15e106]
+                - paragraph [ref=f15e107]:
+                  - text: Establish a trust between your package and your repository using OpenID Connect (OIDC).
+                  - link "Learn more about OpenID Connect." [ref=f15e108] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                - list [ref=f15e110]:
+                  - listitem [ref=f15e111]:
+                    - generic [ref=f15e112]:
+                      - generic [ref=f15e117]:
+                        - generic [ref=f15e118]: Zkred/did-methods
+                        - generic [ref=f15e119]: release.yml
+                        - generic [ref=f15e120]:
+                          - text: "Permissions:"
+                          - generic [ref=f15e121]: npm publish
+                      - generic [ref=f15e122]:
+                        - button "Edit" [ref=f15e123]
+                        - button "Delete OIDC trusted publisher connection" [ref=f15e126]: Delete
+                - heading "Package access" [level=2] [ref=f15e127]
+                - generic [ref=f15e128]:
+                  - term [ref=f15e129]: "Status:"
+                  - definition [ref=f15e130]: public
+                - generic [ref=f15e131]:
+                  - generic [ref=f15e132]:
+                    - heading "Publishing access" [level=2] [ref=f15e133]
+                    - text: Requiring an additional authentication method adds another level of security for your package.
+                  - radiogroup "Publishing access Requiring an additional authentication method adds another level of security for your package." [ref=f15e135]:
+                    - generic [ref=f15e136]:
+                      - radio "Require two-factor authentication or a granular access token with bypass 2fa enabled" [checked] [ref=f15e137]
+                      - generic [ref=f15e138]: Require two-factor authentication or a granular access token with bypass 2fa enabled
+                    - generic [ref=f15e139]:
+                      - radio "Require two-factor authentication and disallow tokens (recommended)" [ref=f15e140]
+                      - generic [ref=f15e141]: Require two-factor authentication and disallow tokens (recommended)
+                  - generic [ref=f15e142]:
+                    - strong [ref=f15e143]: Note about trusted publishers
+                    - text: ": All publishing access options above are compatible with OIDC trusted publishers. If you have configured trusted publishers for this package, they will continue to work regardless of which option you select. For maximum security, we recommend using trusted publishers with the most restrictive token option."
+                  - button "Update Package Settings" [ref=f15e145]
+                - generic [ref=f15e146]:
+                  - heading "Maintainers 3" [level=2] [ref=f15e148]:
+                    - generic [ref=f15e149]: Maintainers
+                    - generic [ref=f15e150]: "3"
+                  - list [ref=f15e151]:
+                    - listitem [ref=f15e152]:
+                      - generic [ref=f15e153]:
+                        - img "vkpatva profile picture" [ref=f15e156]
+                        - generic [ref=f15e157]:
+                          - paragraph [ref=f15e158]: vkpatva
+                          - paragraph [ref=f15e159]: write access
+                          - paragraph [ref=f15e160]:
+                            - text: (via
+                            - link "developers team" [ref=f15e161] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                    - listitem [ref=f15e162]:
+                      - generic [ref=f15e163]:
+                        - img "13jay96 profile picture" [ref=f15e166]
+                        - generic [ref=f15e167]:
+                          - paragraph [ref=f15e168]: 13jay96
+                          - paragraph [ref=f15e169]: write access
+                          - paragraph [ref=f15e170]:
+                            - text: (via
+                            - link "developers team" [ref=f15e171] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                    - listitem [ref=f15e172]:
+                      - generic [ref=f15e173]:
+                        - img "sarkazein profile picture" [ref=f15e176]
+                        - generic [ref=f15e177]:
+                          - paragraph [ref=f15e178]: sarkazein
+                          - paragraph [ref=f15e179]: write access
+                          - paragraph [ref=f15e180]:
+                            - text: (via
+                            - link "developers team" [ref=f15e181] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                - heading "Deprecate package" [level=3] [ref=f15e182]
+                - paragraph [ref=f15e183]: This will mark all versions of the package as deprecated.
+                - paragraph [ref=f15e184]:
+                  - text: Please see npm's
+                  - link "Unpublish Policy" [ref=f15e185] [cursor=pointer]:
+                    - /url: https://docs.npmjs.com/policies/unpublish
+                  - text: for more info.
+                - link "Deprecate package" [ref=f15e186] [cursor=pointer]:
+                  - /url: /package/%40zkred%2Fdid-webplus/deprecate
+            - tabpanel "3 Dependencies"
+            - tabpanel "0 Dependents"
+            - tabpanel "4 Versions"
+          - complementary "Package sidebar" [ref=f15e187]:
+            - heading "Package Sidebar" [level=2] [ref=f15e188]
+            - heading "Install" [level=3] [ref=f15e189]
+            - paragraph [ref=f15e191]:
+              - generic [ref=f15e192]:
+                - code [ref=f15e193]: npm i @zkred/did-webplus
+                - button "Copy install command line" [ref=f15e194] [cursor=pointer]
+            - generic [ref=f15e195]:
+              - heading "Repository" [level=3] [ref=f15e196]
+              - paragraph [ref=f15e197]:
+                - link "Repository github.com/Zkred/did-methods" [ref=f15e198] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods
+                  - text: github.com/Zkred/did-methods
+            - generic [ref=f15e203]:
+              - heading "Homepage" [level=3] [ref=f15e204]
+              - paragraph [ref=f15e205]:
+                - link "Homepage github.com/Zkred/did-methods#readme" [ref=f15e206] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods#readme
+                  - text: github.com/Zkred/did-methods#readme
+            - button "Showing weekly downloads" [ref=f15e209]:
+              - heading "Weekly Downloads" [level=3] [ref=f15e210]
+              - paragraph [ref=f15e221]: "40"
+            - generic [ref=f15e222]:
+              - heading "Version" [level=3] [ref=f15e223]
+              - generic [ref=f15e224]:
+                - paragraph [ref=f15e225]: 0.4.0
+                - button "View more provenance details" [ref=f15e228]
+            - generic [ref=f15e231]:
+              - heading "License" [level=3] [ref=f15e232]
+              - paragraph [ref=f15e233]: Apache-2.0
+            - generic [ref=f15e234]:
+              - heading "Last publish" [level=3] [ref=f15e235]
+              - paragraph [ref=f15e236]:
+                - time [ref=f15e237]: 8 days ago
+            - generic [ref=f15e238]:
+              - heading "Collaborators" [level=3] [ref=f15e239]
+              - list "Collaborators" [ref=f15e240]:
+                - listitem [ref=f15e241]:
+                  - link [ref=f15e243] [cursor=pointer]:
+                    - /url: /~vkpatva
+                    - img "vkpatva" [ref=f15e244]
+                - listitem [ref=f15e245]:
+                  - link [ref=f15e247] [cursor=pointer]:
+                    - /url: /~13jay96
+                    - img "13jay96" [ref=f15e248]
+                - listitem [ref=f15e249]:
+                  - link [ref=f15e251] [cursor=pointer]:
+                    - /url: /~sarkazein
+                    - img "sarkazein" [ref=f15e252]
+            - generic [ref=f15e253]:
+              - link [ref=f15e254] [cursor=pointer]:
+                - /url: https://socket.dev/npm/package/%40zkred%2Fdid-webplus
+                - strong [ref=f15e257]: Analyze security
+                - text: with Socket
+              - link [ref=f15e258] [cursor=pointer]:
+                - /url: https://bundlephobia.com/package/%40zkred%2Fdid-webplus
+                - strong [ref=f15e261]: Check bundle size
+              - link [ref=f15e262] [cursor=pointer]:
+                - /url: https://snyk.io/advisor/npm-package/%40zkred%2Fdid-webplus
+                - strong [ref=f15e265]: View package health
+              - link [ref=f15e266] [cursor=pointer]:
+                - /url: https://npmgraph.js.org/?q=%40zkred%2Fdid-webplus
+                - strong [ref=f15e269]: Explore dependencies
+            - link [ref=f15e271] [cursor=pointer]:
+              - /url: /support?inquire=security&security-inquire=malware&package=%40zkred%2Fdid-webplus&version=0.4.0
+              - strong [ref=f15e274]: Report
+              - text: malware
+      - contentinfo [ref=f15e275]:
+        - heading "Footer" [level=2] [ref=f15e276]
+        - generic [ref=f15e277]:
+          - generic [ref=f15e278]:
+            - link "Visit npm GitHub page" [ref=f15e280] [cursor=pointer]:
+              - /url: https://github.com/npm
+            - link "GitHub" [ref=f15e285] [cursor=pointer]:
+              - /url: https://github.com
+          - generic [ref=f15e288]:
+            - heading "Support" [level=3] [ref=f15e289]
+            - list "Support" [ref=f15e290]:
+              - listitem [ref=f15e291]:
+                - link "Help" [ref=f15e292] [cursor=pointer]:
+                  - /url: https://docs.npmjs.com
+              - listitem [ref=f15e293]:
+                - link "Advisories" [ref=f15e294] [cursor=pointer]:
+                  - /url: https://github.com/advisories
+              - listitem [ref=f15e295]:
+                - link "Status" [ref=f15e296] [cursor=pointer]:
+                  - /url: http://status.npmjs.org/
+              - listitem [ref=f15e297]:
+                - link "Contact npm" [ref=f15e298] [cursor=pointer]:
+                  - /url: /support
+          - generic [ref=f15e299]:
+            - heading "Company" [level=3] [ref=f15e300]
+            - list "Company" [ref=f15e301]:
+              - listitem [ref=f15e302]:
+                - link "About" [ref=f15e303] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=f15e304]:
+                - link "Blog" [ref=f15e305] [cursor=pointer]:
+                  - /url: https://github.blog/tag/npm/
+              - listitem [ref=f15e306]:
+                - link "Press" [ref=f15e307] [cursor=pointer]:
+                  - /url: /press
+          - generic [ref=f15e308]:
+            - heading "Terms & Policies" [level=3] [ref=f15e309]
+            - list "Terms & Policies" [ref=f15e310]:
+              - listitem [ref=f15e311]:
+                - link "Policies" [ref=f15e312] [cursor=pointer]:
+                  - /url: /policies/
+              - listitem [ref=f15e313]:
+                - link "Terms of Use" [ref=f15e314] [cursor=pointer]:
+                  - /url: /policies/terms
+              - listitem [ref=f15e315]:
+                - link "Code of Conduct" [ref=f15e316] [cursor=pointer]:
+                  - /url: /policies/conduct
+              - listitem [ref=f15e317]:
+                - link "Privacy" [ref=f15e318] [cursor=pointer]:
+                  - /url: /policies/privacy
+  - generic [ref=f15e320]: Viewing @zkred/did-webplus version 0.4.0

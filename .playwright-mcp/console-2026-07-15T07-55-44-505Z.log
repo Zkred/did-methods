@@ -1,0 +1,13 @@
+[    1537ms] [LOG] Request ID a1b734ea0d8a1e28-PRG: GET /package/@zkred/did-core/v/0.2.0/provenance responded with 200 @ https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:301
+[   72614ms] TypeError: this.props.onSubmit is not a function
+    at t.value (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:277:6281)
+    at onSubmit (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:277:7093)
+    at t.value (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:295:153866)
+    at onSubmit (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:295:154038)
+    at Object.ze (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:16071)
+    at $e (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:16225)
+    at https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:34212
+    at Or (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:34306)
+    at kr (https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:34720)
+    at https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:318:40368
+[   75557ms] [LOG] Request ID a1b736b6aeb91e28-PRG: GET /package/@zkred/did-core/v/0.2.0/provenance responded with 200 @ https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:301

@@ -1,0 +1,292 @@
+- generic [active] [ref=f14e1]:
+  - generic [ref=f14e3]:
+    - region "Site notifications" [ref=f14e4]:
+      - generic [ref=f14e8]:
+        - generic [ref=f14e9]: ⚠️
+        - alert [ref=f14e11]:
+          - text: npm tokens that bypass 2FA are being restricted — account changes (Aug 2026) and direct publishing (Jan 2027).
+          - link "Learn how to prepare for the npm bypass 2FA token deprecation" [ref=f14e12] [cursor=pointer]:
+            - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+            - text: Learn how to prepare →
+        - button "Close notification" [ref=f14e13] [cursor=pointer]: ×
+    - generic [ref=f14e14]:
+      - banner [ref=f14e15]:
+        - generic [ref=f14e16]:
+          - generic [ref=f14e17]:
+            - text: "skip to:"
+            - link "skip to content" [ref=f14e18] [cursor=pointer]:
+              - /url: "#main"
+              - text: content
+            - link "skip to package search" [ref=f14e19] [cursor=pointer]:
+              - /url: "#search"
+              - text: package search
+          - generic [ref=f14e20]:
+            - button "Light mode — click for dark" [ref=f14e21] [cursor=pointer]
+            - navigation "Product Navigation" [ref=f14e24]:
+              - list [ref=f14e25]:
+                - listitem [ref=f14e26]:
+                  - link "Pro" [ref=f14e27] [cursor=pointer]:
+                    - /url: /products/pro
+                - listitem [ref=f14e28]:
+                  - link "Teams" [ref=f14e29] [cursor=pointer]:
+                    - /url: /products/teams
+                - listitem [ref=f14e30]:
+                  - link "Pricing" [ref=f14e31] [cursor=pointer]:
+                    - /url: /products
+                - listitem [ref=f14e32]:
+                  - link "Documentation" [ref=f14e33] [cursor=pointer]:
+                    - /url: https://docs.npmjs.com
+        - generic [ref=f14e35]:
+          - generic [ref=f14e36]: npm
+          - link "Npm" [ref=f14e38] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f14e42]:
+            - combobox "Search packages" [ref=f14e52]
+            - button "Search" [ref=f14e54]
+          - navigation [ref=f14e56]:
+            - button "Profile menu" [ref=f14e57]:
+              - generic [ref=f14e58]: Menu
+      - main [ref=f14e64]:
+        - generic [ref=f14e65]:
+          - generic [ref=f14e66]:
+            - heading "@zkred/did-webvh TypeScript icon, indicating that this package has built-in type declarations" [level=1] [ref=f14e67]:
+              - generic [ref=f14e68]: "@zkred/did-webvh"
+              - img "TypeScript icon, indicating that this package has built-in type declarations" [ref=f14e70]
+            - generic [ref=f14e71]: 0.1.1 •
+            - generic [ref=f14e72]: Public
+            - generic [ref=f14e73]:
+              - text: • Published
+              - time [ref=f14e74]: 9 days ago
+          - tablist [ref=f14e75]:
+            - tab [ref=f14e76] [cursor=pointer]
+            - tab "Code Beta" [ref=f14e80] [cursor=pointer]:
+              - generic [ref=f14e81]:
+                - text: Code
+                - generic [ref=f14e84]: Beta
+            - tab [ref=f14e86] [cursor=pointer]
+            - tab [ref=f14e90] [cursor=pointer]
+            - tab [ref=f14e94] [cursor=pointer]
+            - tab [selected] [ref=f14e98] [cursor=pointer]
+          - generic [ref=f14e103]:
+            - tabpanel "Readme"
+            - tabpanel
+            - tabpanel "Settings" [ref=f14e104]:
+              - generic [ref=f14e105]:
+                - heading "Trusted Publisher" [level=1] [ref=f14e106]
+                - paragraph [ref=f14e107]:
+                  - text: Establish a trust between your package and your repository using OpenID Connect (OIDC).
+                  - link "Learn more about OpenID Connect." [ref=f14e108] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                - list [ref=f14e110]:
+                  - listitem [ref=f14e111]:
+                    - generic [ref=f14e112]:
+                      - generic [ref=f14e117]:
+                        - generic [ref=f14e118]: Zkred/did-methods
+                        - generic [ref=f14e119]: release.yml
+                        - generic [ref=f14e120]:
+                          - text: "Permissions:"
+                          - generic [ref=f14e121]: npm publish
+                      - generic [ref=f14e122]:
+                        - button "Edit" [ref=f14e123]
+                        - button "Delete OIDC trusted publisher connection" [ref=f14e126]: Delete
+                - heading "Package access" [level=2] [ref=f14e127]
+                - generic [ref=f14e128]:
+                  - term [ref=f14e129]: "Status:"
+                  - definition [ref=f14e130]: public
+                - generic [ref=f14e131]:
+                  - generic [ref=f14e132]:
+                    - heading "Publishing access" [level=2] [ref=f14e133]
+                    - text: Requiring an additional authentication method adds another level of security for your package.
+                  - radiogroup "Publishing access Requiring an additional authentication method adds another level of security for your package." [ref=f14e135]:
+                    - generic [ref=f14e136]:
+                      - radio "Require two-factor authentication or a granular access token with bypass 2fa enabled" [checked] [ref=f14e137]
+                      - generic [ref=f14e138]: Require two-factor authentication or a granular access token with bypass 2fa enabled
+                    - generic [ref=f14e139]:
+                      - radio "Require two-factor authentication and disallow tokens (recommended)" [ref=f14e140]
+                      - generic [ref=f14e141]: Require two-factor authentication and disallow tokens (recommended)
+                  - generic [ref=f14e142]:
+                    - strong [ref=f14e143]: Note about trusted publishers
+                    - text: ": All publishing access options above are compatible with OIDC trusted publishers. If you have configured trusted publishers for this package, they will continue to work regardless of which option you select. For maximum security, we recommend using trusted publishers with the most restrictive token option."
+                  - button "Update Package Settings" [ref=f14e145]
+                - generic [ref=f14e146]:
+                  - heading "Maintainers 3" [level=2] [ref=f14e148]:
+                    - generic [ref=f14e149]: Maintainers
+                    - generic [ref=f14e150]: "3"
+                  - list [ref=f14e151]:
+                    - listitem [ref=f14e152]:
+                      - generic [ref=f14e153]:
+                        - img "vkpatva profile picture" [ref=f14e156]
+                        - generic [ref=f14e157]:
+                          - paragraph [ref=f14e158]: vkpatva
+                          - paragraph [ref=f14e159]: write access
+                          - paragraph [ref=f14e160]:
+                            - text: (via
+                            - link "developers team" [ref=f14e161] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                    - listitem [ref=f14e162]:
+                      - generic [ref=f14e163]:
+                        - img "13jay96 profile picture" [ref=f14e166]
+                        - generic [ref=f14e167]:
+                          - paragraph [ref=f14e168]: 13jay96
+                          - paragraph [ref=f14e169]: write access
+                          - paragraph [ref=f14e170]:
+                            - text: (via
+                            - link "developers team" [ref=f14e171] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                    - listitem [ref=f14e172]:
+                      - generic [ref=f14e173]:
+                        - img "sarkazein profile picture" [ref=f14e176]
+                        - generic [ref=f14e177]:
+                          - paragraph [ref=f14e178]: sarkazein
+                          - paragraph [ref=f14e179]: write access
+                          - paragraph [ref=f14e180]:
+                            - text: (via
+                            - link "developers team" [ref=f14e181] [cursor=pointer]:
+                              - /url: /settings/zkred/teams/team/developers/users
+                            - text: )
+                - heading "Deprecate package" [level=3] [ref=f14e182]
+                - paragraph [ref=f14e183]: This will mark all versions of the package as deprecated.
+                - paragraph [ref=f14e184]:
+                  - text: Please see npm's
+                  - link "Unpublish Policy" [ref=f14e185] [cursor=pointer]:
+                    - /url: https://docs.npmjs.com/policies/unpublish
+                  - text: for more info.
+                - link "Deprecate package" [ref=f14e186] [cursor=pointer]:
+                  - /url: /package/%40zkred%2Fdid-webvh/deprecate
+                - heading "Delete package" [level=3] [ref=f14e187]
+                - paragraph [ref=f14e188]: Once you delete this package, you will lose access to it. Please be certain.
+                - link "Delete package" [ref=f14e189] [cursor=pointer]:
+                  - /url: /package/%40zkred%2Fdid-webvh/delete
+            - tabpanel "2 Dependencies"
+            - tabpanel "0 Dependents"
+            - tabpanel "2 Versions"
+          - complementary "Package sidebar" [ref=f14e190]:
+            - heading "Package Sidebar" [level=2] [ref=f14e191]
+            - heading "Install" [level=3] [ref=f14e192]
+            - paragraph [ref=f14e194]:
+              - generic [ref=f14e195]:
+                - code [ref=f14e196]: npm i @zkred/did-webvh
+                - button "Copy install command line" [ref=f14e197] [cursor=pointer]
+            - generic [ref=f14e198]:
+              - heading "Repository" [level=3] [ref=f14e199]
+              - paragraph [ref=f14e200]:
+                - link "Repository github.com/Zkred/did-methods" [ref=f14e201] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods
+                  - text: github.com/Zkred/did-methods
+            - generic [ref=f14e206]:
+              - heading "Homepage" [level=3] [ref=f14e207]
+              - paragraph [ref=f14e208]:
+                - link "Homepage github.com/Zkred/did-methods#readme" [ref=f14e209] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods#readme
+                  - text: github.com/Zkred/did-methods#readme
+            - button "Showing weekly downloads" [ref=f14e212]:
+              - heading "Weekly Downloads" [level=3] [ref=f14e213]
+              - paragraph [ref=f14e224]: "26"
+            - generic [ref=f14e225]:
+              - heading "Version" [level=3] [ref=f14e226]
+              - generic [ref=f14e227]:
+                - paragraph [ref=f14e228]: 0.1.1
+                - button "View more provenance details" [ref=f14e231]
+            - generic [ref=f14e234]:
+              - heading "License" [level=3] [ref=f14e235]
+              - paragraph [ref=f14e236]: Apache-2.0
+            - generic [ref=f14e237]:
+              - heading "Issues" [level=3] [ref=f14e238]
+              - paragraph [ref=f14e239]:
+                - link "0" [ref=f14e240] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods/issues
+            - generic [ref=f14e241]:
+              - heading "Pull Requests" [level=3] [ref=f14e242]
+              - paragraph [ref=f14e243]:
+                - link "0" [ref=f14e244] [cursor=pointer]:
+                  - /url: https://github.com/Zkred/did-methods/pulls
+            - generic [ref=f14e245]:
+              - heading "Last publish" [level=3] [ref=f14e246]
+              - paragraph [ref=f14e247]:
+                - time [ref=f14e248]: 9 days ago
+            - generic [ref=f14e249]:
+              - heading "Collaborators" [level=3] [ref=f14e250]
+              - list "Collaborators" [ref=f14e251]:
+                - listitem [ref=f14e252]:
+                  - link [ref=f14e254] [cursor=pointer]:
+                    - /url: /~vkpatva
+                    - img "vkpatva" [ref=f14e255]
+                - listitem [ref=f14e256]:
+                  - link [ref=f14e258] [cursor=pointer]:
+                    - /url: /~13jay96
+                    - img "13jay96" [ref=f14e259]
+                - listitem [ref=f14e260]:
+                  - link [ref=f14e262] [cursor=pointer]:
+                    - /url: /~sarkazein
+                    - img "sarkazein" [ref=f14e263]
+            - generic [ref=f14e264]:
+              - link [ref=f14e265] [cursor=pointer]:
+                - /url: https://socket.dev/npm/package/%40zkred%2Fdid-webvh
+                - strong [ref=f14e268]: Analyze security
+                - text: with Socket
+              - link [ref=f14e269] [cursor=pointer]:
+                - /url: https://bundlephobia.com/package/%40zkred%2Fdid-webvh
+                - strong [ref=f14e272]: Check bundle size
+              - link [ref=f14e273] [cursor=pointer]:
+                - /url: https://snyk.io/advisor/npm-package/%40zkred%2Fdid-webvh
+                - strong [ref=f14e276]: View package health
+              - link [ref=f14e277] [cursor=pointer]:
+                - /url: https://npmgraph.js.org/?q=%40zkred%2Fdid-webvh
+                - strong [ref=f14e280]: Explore dependencies
+            - link [ref=f14e282] [cursor=pointer]:
+              - /url: /support?inquire=security&security-inquire=malware&package=%40zkred%2Fdid-webvh&version=0.1.1
+              - strong [ref=f14e285]: Report
+              - text: malware
+      - contentinfo [ref=f14e286]:
+        - heading "Footer" [level=2] [ref=f14e287]
+        - generic [ref=f14e288]:
+          - generic [ref=f14e289]:
+            - link "Visit npm GitHub page" [ref=f14e291] [cursor=pointer]:
+              - /url: https://github.com/npm
+            - link "GitHub" [ref=f14e296] [cursor=pointer]:
+              - /url: https://github.com
+          - generic [ref=f14e299]:
+            - heading "Support" [level=3] [ref=f14e300]
+            - list "Support" [ref=f14e301]:
+              - listitem [ref=f14e302]:
+                - link "Help" [ref=f14e303] [cursor=pointer]:
+                  - /url: https://docs.npmjs.com
+              - listitem [ref=f14e304]:
+                - link "Advisories" [ref=f14e305] [cursor=pointer]:
+                  - /url: https://github.com/advisories
+              - listitem [ref=f14e306]:
+                - link "Status" [ref=f14e307] [cursor=pointer]:
+                  - /url: http://status.npmjs.org/
+              - listitem [ref=f14e308]:
+                - link "Contact npm" [ref=f14e309] [cursor=pointer]:
+                  - /url: /support
+          - generic [ref=f14e310]:
+            - heading "Company" [level=3] [ref=f14e311]
+            - list "Company" [ref=f14e312]:
+              - listitem [ref=f14e313]:
+                - link "About" [ref=f14e314] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=f14e315]:
+                - link "Blog" [ref=f14e316] [cursor=pointer]:
+                  - /url: https://github.blog/tag/npm/
+              - listitem [ref=f14e317]:
+                - link "Press" [ref=f14e318] [cursor=pointer]:
+                  - /url: /press
+          - generic [ref=f14e319]:
+            - heading "Terms & Policies" [level=3] [ref=f14e320]
+            - list "Terms & Policies" [ref=f14e321]:
+              - listitem [ref=f14e322]:
+                - link "Policies" [ref=f14e323] [cursor=pointer]:
+                  - /url: /policies/
+              - listitem [ref=f14e324]:
+                - link "Terms of Use" [ref=f14e325] [cursor=pointer]:
+                  - /url: /policies/terms
+              - listitem [ref=f14e326]:
+                - link "Code of Conduct" [ref=f14e327] [cursor=pointer]:
+                  - /url: /policies/conduct
+              - listitem [ref=f14e328]:
+                - link "Privacy" [ref=f14e329] [cursor=pointer]:
+                  - /url: /policies/privacy
+  - generic [ref=f14e331]: Viewing @zkred/did-webvh version 0.1.1

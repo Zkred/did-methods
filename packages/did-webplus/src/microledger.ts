@@ -1,3 +1,4 @@
+import { canonicalize } from "@zkred/did-core";
 import type { WebplusDidDocument } from "./types.js";
 
 export interface MicroledgerValidationError {
@@ -46,6 +47,63 @@ export interface CryptoVerifier {
  * - self-hashes and proofs verify cryptographically (built-in by default;
  *   pass `verifier: null` for structural checks only)
  */
+/**
+ * Split a `did-documents.jsonl` payload into lines and enforce the spec's
+ * wire-format rule: each serialized DID document MUST be byte-for-byte equal
+ * to its own JCS (RFC 8785) serialization. Returns parsed documents plus any
+ * `not-jcs-canonical` violations. A single trailing `\r` per line (CRLF
+ * transport) is tolerated; anything else, including insignificant whitespace
+ * or reordered keys, is a violation.
+ */
+export function parseJcsCanonicalLines(jsonl: string): {
+  docs: WebplusDidDocument[];
+  errors: MicroledgerValidationError[];
+} {
+  const docs: WebplusDidDocument[] = [];
+  const errors: MicroledgerValidationError[] = [];
+  const lines = jsonl
+    .split("\n")
+    .map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line))
+    .filter((line) => line.length > 0);
+
+  lines.forEach((line, i) => {
+    let doc: WebplusDidDocument;
+    try {
+      doc = JSON.parse(line) as WebplusDidDocument;
+    } catch {
+      errors.push({ versionId: -1, message: `line ${i + 1} is not valid JSON` });
+      return;
+    }
+    if (canonicalize(doc) !== line) {
+      errors.push({
+        versionId: typeof doc.versionId === "number" ? doc.versionId : -1,
+        message: `not-jcs-canonical: line ${i + 1} is not byte-equal to its JCS (RFC 8785) serialization`,
+      });
+    }
+    docs.push(doc);
+  });
+
+  return { docs, errors };
+}
+
+/**
+ * Validate a microledger from its raw `did-documents.jsonl` bytes: enforces
+ * the JCS wire-format rule on every line (which the parsed-object
+ * `validateMicroledger` cannot check, since raw bytes are gone after
+ * parsing), then runs the full structural and cryptographic validation.
+ */
+export async function validateMicroledgerBytes(
+  jsonl: string,
+  options: { expectedDid?: string; verifier?: CryptoVerifier | null } = {},
+): Promise<MicroledgerValidationResult> {
+  const { docs, errors } = parseJcsCanonicalLines(jsonl);
+  if (docs.length === 0) {
+    return { valid: false, errors: [...errors, { versionId: 0, message: "microledger is empty" }] };
+  }
+  const structural = await validateMicroledger(docs, options);
+  return { valid: errors.length === 0 && structural.valid, errors: [...errors, ...structural.errors] };
+}
+
 export async function validateMicroledger(
   docs: WebplusDidDocument[],
   options: { expectedDid?: string; verifier?: CryptoVerifier | null } = {},

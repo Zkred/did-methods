@@ -109,6 +109,12 @@ Validation is cryptographic by default:
   `atLeast`/`of` thresholds).
 - Plus the structural checks: hash chaining, contiguous versionIds, timestamp
   monotonicity.
+- **Wire-format rule** — when validating from raw bytes (`resolve` with
+  `verify: true`, or `validateMicroledgerBytes`), each `did-documents.jsonl`
+  line must be byte-equal to its own JCS serialization, as the spec requires;
+  reordered keys or stray whitespace are rejected as `not-jcs-canonical`. The
+  parsed-object `validateMicroledger` cannot check this (the bytes are gone),
+  so prefer the bytes API when you hold the wire form.
 
 Both layers are tested against the Rust reference implementation's published
 test vectors. Pass `verifier: null` for structural-only validation, or supply

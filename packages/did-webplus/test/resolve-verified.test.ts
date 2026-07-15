@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { canonicalize } from "@zkred/did-core";
 import { fetchMicroledger, resolve, selectFromMicroledger } from "../src/resolver.js";
 import { DID, rootDoc, secondDoc } from "./fixtures/microledger.js";
 
@@ -7,7 +8,7 @@ const LEDGER_URL = `https://example.com/${rootDoc.selfHash}/did-documents.jsonl`
 function jsonlFetch(docs: unknown[], url = LEDGER_URL): typeof fetch {
   return (async (input: RequestInfo | URL) => {
     if (String(input) === url) {
-      return new Response(docs.map((d) => JSON.stringify(d)).join("\n") + "\n", { status: 200 });
+      return new Response(docs.map((d) => canonicalize(d)).join("\n") + "\n", { status: 200 });
     }
     return new Response("not found", { status: 404 });
   }) as typeof fetch;

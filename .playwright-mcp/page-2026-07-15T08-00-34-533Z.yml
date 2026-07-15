@@ -1,0 +1,25 @@
+- generic [ref=f12e3]:
+  - region "Site notifications" [ref=f12e4]:
+    - generic [ref=f12e8]:
+      - generic [ref=f12e9]: ⚠️
+      - alert [ref=f12e11]:
+        - text: npm tokens that bypass 2FA are being restricted — account changes (Aug 2026) and direct publishing (Jan 2027).
+        - link "Learn how to prepare for the npm bypass 2FA token deprecation" [ref=f12e12] [cursor=pointer]:
+          - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+          - text: Learn how to prepare →
+      - button "Close notification" [ref=f12e13] [cursor=pointer]: ×
+  - main [ref=f12e15]:
+    - link "Npm" [ref=f12e17] [cursor=pointer]:
+      - /url: /
+    - heading "Two-Factor Authentication" [level=1] [ref=f12e20]
+    - generic [ref=f12e24]:
+      - heading "Enter One-time Password" [level=2] [ref=f12e31]
+      - paragraph [ref=f12e32]:
+        - text: Enter a 6-digit code from your
+        - link "authenticator device" [ref=f12e33] [cursor=pointer]:
+          - /url: https://docs.npmjs.com/configuring-two-factor-authentication#prerequisites
+      - generic [ref=f12e34]:
+        - generic [ref=f12e35]: One-time Password
+        - textbox "One-time Password" [active] [ref=f12e37]:
+          - /placeholder: ""
+      - button "Login" [ref=f12e39]

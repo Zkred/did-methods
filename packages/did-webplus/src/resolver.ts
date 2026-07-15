@@ -7,7 +7,7 @@ import {
 } from "@zkred/did-core";
 import { parseDid, parseQuery, resolutionUrl, type ResolutionUrlOptions } from "./did.js";
 import { microledgerUrl } from "./controller.js";
-import { validateMicroledger, type CryptoVerifier } from "./microledger.js";
+import { parseJcsCanonicalLines, validateMicroledger, type CryptoVerifier } from "./microledger.js";
 import type { WebplusDidDocument, WebplusDidQuery } from "./types.js";
 
 export interface WebplusResolverOptions extends ResolutionUrlOptions {
@@ -86,18 +86,27 @@ export async function fetchMicroledger(
     throw new DidError(ResolutionErrorCode.InternalError, `unexpected HTTP ${response.status} from ${url}`);
   }
   const text = await response.text();
-  const lines = text.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0) {
+  // Spec wire-format rule: every serialized DID document must be byte-equal
+  // to its own JCS (RFC 8785) serialization. Enforced here, on the raw
+  // bytes, because it is unrecoverable after JSON.parse.
+  const { docs, errors } = parseJcsCanonicalLines(text);
+  if (docs.length === 0 && errors.length === 0) {
     throw new DidError(ResolutionErrorCode.NotFound, `microledger at ${url} is empty`);
   }
-  try {
-    return lines.map((line) => JSON.parse(line) as WebplusDidDocument);
-  } catch {
+  const invalidJson = errors.find((e) => e.message.includes("not valid JSON"));
+  if (invalidJson) {
     throw new DidError(
       ResolutionErrorCode.RepresentationNotSupported,
-      `microledger at ${url} contains invalid JSON lines`,
+      `microledger at ${url}: ${invalidJson.message}`,
     );
   }
+  if (errors.length > 0) {
+    throw new DidError(
+      ResolutionErrorCode.InvalidDidDocument,
+      `microledger at ${url}: ${errors.map((e) => e.message).join("; ")}`,
+    );
+  }
+  return docs;
 }
 
 /** Select the document a DID URL query refers to from a full microledger. */

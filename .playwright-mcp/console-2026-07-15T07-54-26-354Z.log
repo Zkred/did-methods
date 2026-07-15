@@ -1,0 +1,3 @@
+[    1403ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://www.npmjs.com/login?next=%2Fpackage%2F%40zkred%2Fdid-core%2Faccess:0
+[   25821ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://www.npmjs.com/login?next=%2Fpackage%2F%40zkred%2Fdid-core%2Faccess:0
+[   58520ms] [LOG] Request ID a1b734629ca71e28-PRG: GET /package/@zkred/did-core/v/0.2.0/provenance responded with 200 @ https://static-production.npmjs.com/commons.1d7d8492837dfe707cf2.js:301

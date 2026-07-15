@@ -3,6 +3,7 @@ import type { DidResolutionResult } from "./types.js";
 /** Standard DID resolution error codes (W3C DID Core + DID Resolution spec). */
 export const ResolutionErrorCode = {
   InvalidDid: "invalidDid",
+  InvalidDidDocument: "invalidDidDocument",
   NotFound: "notFound",
   RepresentationNotSupported: "representationNotSupported",
   MethodNotSupported: "methodNotSupported",
