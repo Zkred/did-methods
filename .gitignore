@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.claude/settings.local.json
+.playwright-mcp/
 *.tsbuildinfo
 .DS_Store
 coverage/
