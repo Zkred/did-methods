@@ -43,8 +43,8 @@ describe("JCS wire-format enforcement (spec: document must equal its JCS seriali
     expect(docs.map((d) => d.versionId)).toEqual([0, 1]);
   });
 
-  it("resolve(verify: true) surfaces the violation as invalidDidDocument", async () => {
-    const result = await resolve(DID, { verify: true, fetchImpl: rawFetch(permutedLedger) });
+  it("resolve (full mode) surfaces the violation as invalidDidDocument", async () => {
+    const result = await resolve(DID, { store: null, fetchImpl: rawFetch(permutedLedger) });
     expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
     expect(result.didResolutionMetadata.message).toMatch(/not-jcs-canonical/);
     expect(result.didDocument).toBeNull();

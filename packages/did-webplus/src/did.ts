@@ -121,10 +121,12 @@ export interface ResolutionUrlOptions {
   scheme?: "https" | "http";
 }
 
-/** True for hosts the spec allows to be served over plain http. */
+/**
+ * True for the host the spec's DID-to-URL mapping serves over plain http:
+ * exactly `localhost` (spec: "If the domain is localhost, prepend http://").
+ */
 export function isLocalhostHost(host: string): boolean {
-  const h = host.toLowerCase();
-  return h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1" || h === "::1";
+  return host.toLowerCase() === "localhost";
 }
 
 /** The scheme to use for a host when none is specified. */
@@ -132,28 +134,9 @@ export function schemeForHost(host: string, options: ResolutionUrlOptions = {}):
   return options.scheme ?? (isLocalhostHost(host) ? "http" : "https");
 }
 
-/**
- * Map a parsed DID (plus optional query) to the URL of the DID document
- * hosted by the VDR:
- *
- *   latest:      https://<host>/<path...>/<rootSelfHash>/did.json
- *   by version:  https://<host>/<path...>/<rootSelfHash>/did/versionId/<n>.json
- *   by selfHash: https://<host>/<path...>/<rootSelfHash>/did/selfHash/<hash>.json
- */
-export function resolutionUrl(
-  parsed: ParsedWebplusDid,
-  query: WebplusDidQuery = {},
-  options: ResolutionUrlOptions = {},
-): string {
-  const scheme = schemeForHost(parsed.host, options);
-  const authority = parsed.port !== undefined ? `${parsed.host}:${parsed.port}` : parsed.host;
-  const base = [`${scheme}:/`, authority, ...parsed.path, parsed.rootSelfHash].join("/");
-
-  if (query.selfHash !== undefined) {
-    return `${base}/did/selfHash/${query.selfHash}.json`;
-  }
-  if (query.versionId !== undefined) {
-    return `${base}/did/versionId/${query.versionId}.json`;
-  }
-  return `${base}/did.json`;
-}
+// NOTE: earlier versions exported a `resolutionUrl` that mapped DIDs to
+// `did.json` / `did/versionId/<n>.json` / `did/selfHash/<hash>.json` URLs.
+// That mapping is legacy and non-conformant: the spec defines exactly one
+// resolution URL per DID, ending in `did-documents.jsonl` (see
+// `microledgerUrl` in controller.ts). versionId/selfHash/versionTime queries
+// select documents from the fetched microledger rather than mapping to URLs.

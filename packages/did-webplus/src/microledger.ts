@@ -108,33 +108,53 @@ export async function validateMicroledger(
   docs: WebplusDidDocument[],
   options: { expectedDid?: string; verifier?: CryptoVerifier | null } = {},
 ): Promise<MicroledgerValidationResult> {
+  return validateMicroledgerExtension([], docs, options);
+}
+
+/**
+ * Validate `newDocs` as a continuation of the already-verified `baseDocs`
+ * prefix (the incremental path of a Full DID Resolver: after a range-based
+ * fetch, only the new documents need verification). With an empty base this
+ * is exactly `validateMicroledger`.
+ */
+export async function validateMicroledgerExtension(
+  baseDocs: WebplusDidDocument[],
+  newDocs: WebplusDidDocument[],
+  options: { expectedDid?: string; verifier?: CryptoVerifier | null } = {},
+): Promise<MicroledgerValidationResult> {
   const { WebplusCryptoVerifier } = await import("./verifier.js");
   const verifier =
     options.verifier === null ? undefined : (options.verifier ?? new WebplusCryptoVerifier());
   const errors: MicroledgerValidationError[] = [];
   const report = (versionId: number, message: string) => errors.push({ versionId, message });
 
-  if (docs.length === 0) {
+  if (baseDocs.length === 0 && newDocs.length === 0) {
     return { valid: false, errors: [{ versionId: 0, message: "microledger is empty" }] };
   }
 
-  const root = docs[0]!;
-  const did = options.expectedDid ?? root.id;
+  const first = baseDocs[0] ?? newDocs[0]!;
+  const did = options.expectedDid ?? first.id;
   const expectedRootSelfHash = did.split(":").at(-1);
 
-  if (root.versionId !== 0) {
-    report(root.versionId, `first document has versionId ${root.versionId}, expected 0`);
-  }
-  if (root.prevDIDDocumentSelfHash !== undefined) {
-    report(0, "root document must not have prevDIDDocumentSelfHash");
-  }
-  if (root.selfHash !== expectedRootSelfHash) {
-    report(0, `root selfHash ${root.selfHash} does not match DID component ${expectedRootSelfHash}`);
+  if (baseDocs.length === 0) {
+    const root = newDocs[0]!;
+    if (root.versionId !== 0) {
+      report(root.versionId, `first document has versionId ${root.versionId}, expected 0`);
+    }
+    if (root.prevDIDDocumentSelfHash !== undefined) {
+      report(0, "root document must not have prevDIDDocumentSelfHash");
+    }
+    if (root.selfHash !== expectedRootSelfHash) {
+      report(0, `root selfHash ${root.selfHash} does not match DID component ${expectedRootSelfHash}`);
+    }
   }
 
-  let prev = root;
-  for (let i = 0; i < docs.length; i++) {
-    const doc = docs[i]!;
+  const offset = baseDocs.length;
+  const docs = newDocs;
+  let prev = offset > 0 ? baseDocs[offset - 1]! : docs[0]!;
+  for (let j = 0; j < docs.length; j++) {
+    const i = offset + j;
+    const doc = docs[j]!;
     if (doc.id !== did) {
       report(doc.versionId, `document id ${doc.id} does not match DID ${did}`);
     }

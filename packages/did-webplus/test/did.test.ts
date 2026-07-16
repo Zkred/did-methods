@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatDid, parseDid, parseQuery, resolutionUrl } from "../src/did.js";
+import { formatDid, parseDid, parseQuery } from "../src/did.js";
+import { microledgerUrl } from "../src/controller.js";
 import { DID } from "./fixtures/microledger.js";
 
 const ROOT_SELF_HASH = "uHiAgZ9Z9FJ38ZGeQRZoFxxXfbpvRsg2DuPXJ5vzR1Uy3HQ";
@@ -52,26 +53,16 @@ describe("parseQuery", () => {
   });
 });
 
-describe("resolutionUrl", () => {
-  const parsed = parseDid(DID);
-
-  it("maps the latest document", () => {
-    expect(resolutionUrl(parsed)).toBe(`https://example.com/${ROOT_SELF_HASH}/did.json`);
-  });
-
-  it("maps versionId and selfHash queries", () => {
-    expect(resolutionUrl(parsed, { versionId: 3 })).toBe(
-      `https://example.com/${ROOT_SELF_HASH}/did/versionId/3.json`,
-    );
-    expect(resolutionUrl(parsed, { selfHash: ROOT_SELF_HASH })).toBe(
-      `https://example.com/${ROOT_SELF_HASH}/did/selfHash/${ROOT_SELF_HASH}.json`,
+describe("DID-to-URL mapping (spec: single resolution URL)", () => {
+  it("maps a DID to its did-documents.jsonl URL", () => {
+    expect(microledgerUrl(DID)).toBe(
+      `https://example.com/${ROOT_SELF_HASH}/did-documents.jsonl`,
     );
   });
 
-  it("supports http scheme and ports for local development", () => {
-    const local = parseDid(`did:webplus:localhost%3A8085:${ROOT_SELF_HASH}`);
-    expect(resolutionUrl(local, {}, { scheme: "http" })).toBe(
-      `http://localhost:8085/${ROOT_SELF_HASH}/did.json`,
+  it("percent-decodes ports and joins path components with slashes", () => {
+    expect(microledgerUrl(`did:webplus:localhost%3A8085:dids:abc:${ROOT_SELF_HASH}`)).toBe(
+      `http://localhost:8085/dids/abc/${ROOT_SELF_HASH}/did-documents.jsonl`,
     );
   });
 });

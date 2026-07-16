@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "@zkred/did-core";
 import { fetchMicroledger, resolve, selectFromMicroledger } from "../src/resolver.js";
+import { InMemoryMicroledgerStore } from "../src/store.js";
 import { DID, rootDoc, secondDoc } from "./fixtures/microledger.js";
 
 const LEDGER_URL = `https://example.com/${rootDoc.selfHash}/did-documents.jsonl`;
@@ -48,9 +49,9 @@ describe("selectFromMicroledger", () => {
   });
 });
 
-describe("resolve with verify: true", () => {
+describe("resolve in full mode (default)", () => {
   it("verifies the full microledger and returns the latest document", async () => {
-    const result = await resolve(DID, { verify: true, fetchImpl: jsonlFetch([rootDoc, secondDoc]) });
+    const result = await resolve(DID, { store: new InMemoryMicroledgerStore(), fetchImpl: jsonlFetch([rootDoc, secondDoc]) });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocument?.id).toBe(DID);
     expect(result.didDocumentMetadata.versionId).toBe("1");
@@ -58,8 +59,9 @@ describe("resolve with verify: true", () => {
     expect(result.didDocumentMetadata.created).toBe(rootDoc.validFrom);
   });
 
-  it("resolves versionTime queries via the microledger even without verify", async () => {
+  it("resolves versionTime queries from the version history", async () => {
     const result = await resolve(`${DID}?versionTime=2025-11-19T01:43:26.985Z`, {
+      store: null,
       fetchImpl: jsonlFetch([rootDoc, secondDoc]),
     });
     expect(result.didResolutionMetadata.error).toBeUndefined();
@@ -69,7 +71,7 @@ describe("resolve with verify: true", () => {
   it("rejects a tampered microledger", async () => {
     const tampered = structuredClone(secondDoc);
     tampered.updateRules = { key: "u7QG2O2Vm22e1g4v6VRxjY9Qgm9XqJAKf_b3cH6Oc4R0bhw" };
-    const result = await resolve(DID, { verify: true, fetchImpl: jsonlFetch([rootDoc, tampered]) });
+    const result = await resolve(DID, { store: null, fetchImpl: jsonlFetch([rootDoc, tampered]) });
     expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
     expect(result.didResolutionMetadata.message).toMatch(/verification failed/);
     expect(result.didDocument).toBeNull();
@@ -77,7 +79,7 @@ describe("resolve with verify: true", () => {
 
   it("still verifies structurally when verifier is null", async () => {
     const result = await resolve(DID, {
-      verify: true,
+      store: null,
       verifier: null,
       fetchImpl: jsonlFetch([rootDoc, secondDoc]),
     });

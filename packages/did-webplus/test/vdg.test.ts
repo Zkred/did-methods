@@ -25,12 +25,12 @@ describe("resolution through a VDG", () => {
         ? new Response(JSON.stringify(secondDoc), { status: 200 })
         : new Response("nope", { status: 404 })) as typeof fetch;
 
-    const result = await resolve(DID, { vdg: "vdg.example.com", verify: false, fetchImpl });
+    const result = await resolve(DID, { vdg: "vdg.example.com", mode: "thin", fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("1");
   });
 
-  it("verifies the full microledger via /webplus/v1/fetch when verify is set", async () => {
+  it("verifies the full microledger via /webplus/v1/fetch in full mode", async () => {
     const expected = vdgMicroledgerUrl(DID, "vdg.example.com");
     const fetchImpl = (async (input: RequestInfo | URL) =>
       String(input) === expected
@@ -39,7 +39,7 @@ describe("resolution through a VDG", () => {
           })
         : new Response("nope", { status: 404 })) as typeof fetch;
 
-    const result = await resolve(DID, { vdg: "vdg.example.com", verify: true, fetchImpl });
+    const result = await resolve(DID, { vdg: "vdg.example.com", store: null, fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.verified).toBe(true);
     expect(result.didDocumentMetadata.versionId).toBe("1");

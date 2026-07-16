@@ -25,20 +25,46 @@ npm install @zkred/did-webplus did-resolver
 import { Resolver } from "did-resolver";
 import { getResolver } from "@zkred/did-webplus";
 
-const resolver = new Resolver(getResolver({ verify: true }));
+const resolver = new Resolver(getResolver());
 const result = await resolver.resolve(
   "did:webplus:example.com:uHiAgZ9Z9FJ38ZGeQRZoFxxXfbpvRsg2DuPXJ5vzR1Uy3HQ",
 );
 ```
 
-With `verify: true`, resolution fetches the DID's complete microledger
-(`did-documents.jsonl`) and cryptographically verifies it — self-hashes,
-Ed25519 proofs against `updateRules`, and chain integrity — before returning
-the requested document. Without it, a single document is fetched as-is.
+The default is a **Full DID Resolver** in the spec's terminology: the DID's
+microledger is fetched from the spec's single resolution URL
+(`…/did-documents.jsonl`), cryptographically verified — self-hashes, proofs
+against `updateRules`, chain integrity, and the JCS wire-format rule — and the
+verified portion is **persisted**. Repeated resolution then issues a
+range-based HTTP GET and verifies only new documents, giving near-constant
+cost per re-resolution, plus:
+
+- **duplicity detection**: any served history that contradicts the verified
+  store (forks, rewrites, rollbacks) fails with `invalidDidDocument`;
+- **offline historical resolution**: `?versionId=` / `?selfHash=` (and
+  settled `?versionTime=`) queries answer from the store with no network
+  request at all.
+
+Persistence defaults to a shared in-memory store. Supply your own
+`MicroledgerStore` (`get`/`put`) for durability, or disable it:
+
+```ts
+resolve(did, { store: myDurableStore });
+resolve(did, { store: null }); // full fetch + verify on every resolution
+```
+
+Two other modes exist via `mode`:
+
+- `mode: "thin"` — a **Thin DID Resolver** per the spec: delegates fetching,
+  verification, and archiving to a trusted VDG (the `vdg` option is
+  required); one request per resolution, results marked `verified: false`.
+- `mode: "unverified"` — development/testing only. Enforces the JCS wire
+  format but performs no cryptographic verification and trusts the host.
+  Non-conformant; never use in production.
 
 DID URL query parameters are supported: `?versionId=2`, `?selfHash=uHiC...`,
-and `?versionTime=2026-01-01T00:00:00Z` (versionTime selects the document
-that was valid at that instant from the version history).
+and `?versionTime=2026-01-01T00:00:00Z`. Queries select documents from the
+verified microledger; they do not map to separate URLs.
 
 ### Create and update DIDs (controller operations)
 
