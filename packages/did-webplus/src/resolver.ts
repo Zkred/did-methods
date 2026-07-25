@@ -141,8 +141,18 @@ function parseCanonicalOrThrow(text: string, url: string): WebplusDidDocument[] 
   return docs;
 }
 
-const rawOf = (docs: WebplusDidDocument[]): string =>
-  docs.map((d) => canonicalize(d)).join("\n") + "\n";
+/**
+ * Canonical archived form of a verified ledger: JCS lines joined by `\n`,
+ * with NO trailing newline. Its UTF-8 byte length is therefore the position
+ * immediately after the final `}`, which is exactly where the spec requires
+ * range-based GETs to start (so servers that omit a trailing newline in
+ * did-documents.jsonl are still handled).
+ */
+const rawOf = (docs: WebplusDidDocument[]): string => docs.map((d) => canonicalize(d)).join("\n");
+
+/** Normalize stored raw (possibly persisted by <=0.8.0 with a trailing newline). */
+const stripTrailingNewline = (raw: string): string =>
+  raw.endsWith("\n") ? raw.replace(/\r?\n$/, "") : raw;
 
 const utf8Length = (s: string): number => new TextEncoder().encode(s).length;
 
@@ -261,21 +271,32 @@ async function resolveFull(
   let raw: string;
 
   if (stored) {
-    const offset = utf8Length(stored.raw);
+    const storedRaw = stripTrailingNewline(stored.raw);
+    // Spec: the range MUST start immediately after the final `}` of the last
+    // archived document (byte 0 when nothing is archived).
+    const offset = utf8Length(storedRaw);
     const { status, text } = await fetchText(url, options, offset);
     if (status === 416) {
       // nothing new since our verified copy
       docs = stored.docs;
-      raw = stored.raw;
+      raw = storedRaw;
     } else if (status === 206) {
+      // The chunk begins with the newline separating the last archived
+      // document from any new ones; a bare newline (or empty chunk) means
+      // the server has nothing new but does store a trailing newline.
       const newDocs = parseCanonicalOrThrow(text, url);
-      const result = await validateMicroledgerExtension(stored.docs, newDocs, {
-        expectedDid: did,
-        ...verifierOpt,
-      });
-      throwOnDuplicityOrErrors(result, url, stored, newDocs);
-      docs = [...stored.docs, ...newDocs];
-      raw = stored.raw + rawOf(newDocs).slice(0, -1) + "\n";
+      if (newDocs.length === 0) {
+        docs = stored.docs;
+        raw = storedRaw;
+      } else {
+        const result = await validateMicroledgerExtension(stored.docs, newDocs, {
+          expectedDid: did,
+          ...verifierOpt,
+        });
+        throwOnDuplicityOrErrors(result, url, stored, newDocs);
+        docs = [...stored.docs, ...newDocs];
+        raw = storedRaw + "\n" + rawOf(newDocs);
+      }
     } else if (status >= 200 && status < 300) {
       // server ignored the Range header; got the full ledger
       const fetched = parseCanonicalOrThrow(text, url);

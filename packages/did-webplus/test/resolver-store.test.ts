@@ -55,7 +55,7 @@ describe("Full DID Resolver persistence", () => {
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("1");
     expect(verifier.selfHashCalls).toBe(callsAfterFirst); // nothing re-verified
-    expect(requests[1]!.range).toBe(`bytes=${byteLen(jsonl([rootDoc, secondDoc]))}-`);
+    expect(requests[1]!.range).toBe(`bytes=${byteLen(jsonl([rootDoc, secondDoc])) - 1}-`);
   });
 
   it("ledger growth fetches and verifies only the new document", async () => {
@@ -184,6 +184,45 @@ describe("Full DID Resolver persistence", () => {
     await resolve(DID, { store: null, fetchImpl });
     expect(requests).toHaveLength(2);
     expect(requests.every((r) => r.range === undefined)).toBe(true);
+  });
+});
+
+describe("spec range offset: one byte past the final '}'", () => {
+  const jsonlNoNewline = (docs: WebplusDidDocument[]) =>
+    docs.map((d) => canonicalize(d)).join("\n");
+
+  it("re-resolution works against a VDR that omits the trailing newline", async () => {
+    const requests: Array<{ range?: string }> = [];
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const range = (init?.headers as Record<string, string> | undefined)?.range;
+      requests.push(range ? { range } : {});
+      if (String(input) !== LEDGER_URL) return new Response("nf", { status: 404 });
+      const body = jsonlNoNewline([rootDoc, secondDoc]); // no trailing \n
+      if (range) {
+        const start = Number(range.replace("bytes=", "").replace("-", ""));
+        if (start >= byteLen(body)) return new Response(null, { status: 416 });
+        return new Response(new TextEncoder().encode(body).slice(start), { status: 206 });
+      }
+      return new Response(body, { status: 200 });
+    }) as typeof fetch;
+
+    const store = new InMemoryMicroledgerStore();
+    await resolve(DID, { store, fetchImpl });
+    const again = await resolve(DID, { store, fetchImpl });
+    expect(again.didResolutionMetadata.error).toBeUndefined();
+    expect(again.didDocumentMetadata.versionId).toBe("1");
+    // offset = byte after the final }, which equals the whole body length here
+    expect(requests[1]!.range).toBe(`bytes=${byteLen(jsonlNoNewline([rootDoc, secondDoc]))}-`);
+  });
+
+  it("treats a newline-only 206 chunk as up to date", async () => {
+    const { fetchImpl } = fakeVdr(() => [rootDoc, secondDoc]); // serves trailing \n
+    const store = new InMemoryMicroledgerStore();
+    await resolve(DID, { store, fetchImpl });
+    // second resolve: range starts after final }, server returns "\n" (206)
+    const result = await resolve(DID, { store, fetchImpl });
+    expect(result.didResolutionMetadata.error).toBeUndefined();
+    expect(result.didDocumentMetadata.versionId).toBe("1");
   });
 });
 

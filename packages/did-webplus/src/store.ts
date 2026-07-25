@@ -2,9 +2,12 @@ import type { WebplusDidDocument } from "./types.js";
 
 /**
  * A verified portion of a DID's microledger, as retained by a Full DID
- * Resolver. `raw` is the canonical JSONL byte content (one JCS line per
- * document, `\n`-terminated); its UTF-8 byte length is the offset used for
- * range-based HTTP GETs of subsequent updates.
+ * Resolver. `raw` is the canonical JSONL byte content: one JCS line per
+ * document, joined by `\n`, with no trailing newline. Its UTF-8 byte length
+ * is therefore the position immediately after the final document's closing
+ * `}`, which is where the spec requires range-based HTTP GETs of subsequent
+ * updates to start. (Values persisted by version 0.8.0 carried a trailing
+ * newline; the resolver normalizes on read.)
  */
 export interface StoredMicroledger {
   raw: string;
