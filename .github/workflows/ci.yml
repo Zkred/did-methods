@@ -18,4 +18,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
+      - name: Fetch official did:webplus conformance test vectors
+        run: git clone --depth 1 https://github.com/LedgerDomain/did-webplus-spec.git /tmp/did-webplus-spec
       - run: pnpm test
+        env:
+          SPEC_VECTOR_DIR: /tmp/did-webplus-spec/test-vector

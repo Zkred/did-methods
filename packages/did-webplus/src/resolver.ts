@@ -282,9 +282,11 @@ async function resolveFull(
       raw = storedRaw;
     } else if (status === 206) {
       // The chunk begins with the newline separating the last archived
-      // document from any new ones; a bare newline (or empty chunk) means
-      // the server has nothing new but does store a trailing newline.
-      const newDocs = parseCanonicalOrThrow(text, url);
+      // document from any new ones (strip that separator byte before strict
+      // JSONL parsing); a bare newline (or empty chunk) means the server has
+      // nothing new but does store a trailing newline.
+      const chunk = text.startsWith("\n") ? text.slice(1) : text;
+      const newDocs = parseCanonicalOrThrow(chunk, url);
       if (newDocs.length === 0) {
         docs = stored.docs;
         raw = storedRaw;

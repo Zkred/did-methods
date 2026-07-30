@@ -1,8 +1,11 @@
 import { base64urlDecode, base64urlEncode, concatBytes, utf8Encode } from "@zkred/did-core";
 import { ed25519 } from "@noble/curves/ed25519";
+import { ed448 } from "@noble/curves/ed448";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { p256 } from "@noble/curves/p256";
-import { sha256 } from "@noble/hashes/sha2";
+import { p384 } from "@noble/curves/p384";
+import { p521 } from "@noble/curves/p521";
+import { sha256, sha384, sha512 } from "@noble/hashes/sha2";
 import { formatMbPubKey, type CurveName } from "./multiformat.js";
 import { JOSE_ALG_BY_CURVE } from "./jws.js";
 import { proofSigningInput } from "./selfhash.js";
@@ -50,6 +53,27 @@ export function p256KeyPair(privateKey?: Uint8Array): SigningKeyPair {
   return { curve: "p256", privateKey: priv, publicKey, mbPubKey: formatMbPubKey(publicKey, "p256") };
 }
 
+/** Generate a new Ed448 key pair, or derive one from a 57-byte private key. */
+export function ed448KeyPair(privateKey?: Uint8Array): SigningKeyPair {
+  const priv = privateKey ?? ed448.utils.randomPrivateKey();
+  const publicKey = ed448.getPublicKey(priv);
+  return { curve: "ed448", privateKey: priv, publicKey, mbPubKey: formatMbPubKey(publicKey, "ed448") };
+}
+
+/** Generate a new P-384 key pair, or derive one from a private key. */
+export function p384KeyPair(privateKey?: Uint8Array): SigningKeyPair {
+  const priv = privateKey ?? p384.utils.randomPrivateKey();
+  const publicKey = p384.getPublicKey(priv, true);
+  return { curve: "p384", privateKey: priv, publicKey, mbPubKey: formatMbPubKey(publicKey, "p384") };
+}
+
+/** Generate a new P-521 key pair, or derive one from a private key. */
+export function p521KeyPair(privateKey?: Uint8Array): SigningKeyPair {
+  const priv = privateKey ?? p521.utils.randomPrivateKey();
+  const publicKey = p521.getPublicKey(priv, true);
+  return { curve: "p521", privateKey: priv, publicKey, mbPubKey: formatMbPubKey(publicKey, "p521") };
+}
+
 /** The `publicKeyJwk` fields for a public key: OKP/x for Ed25519, EC/x/y for EC curves. */
 export function publicKeyJwkParams(
   publicKey: Uint8Array,
@@ -58,23 +82,21 @@ export function publicKeyJwkParams(
   switch (curve) {
     case "ed25519":
       return { kty: "OKP", crv: "Ed25519", x: base64urlEncode(publicKey) };
+    case "ed448":
+      return { kty: "OKP", crv: "Ed448", x: base64urlEncode(publicKey) };
     case "secp256k1":
-    case "p256": {
-      const point =
-        curve === "secp256k1"
-          ? secp256k1.ProjectivePoint.fromHex(publicKey)
-          : p256.ProjectivePoint.fromHex(publicKey);
-      const affine = point.toAffine();
+    case "p256":
+    case "p384":
+    case "p521": {
+      const ec = { secp256k1, p256, p384, p521 }[curve];
+      const coordBytes = { secp256k1: 32, p256: 32, p384: 48, p521: 66 }[curve];
+      const crv = { secp256k1: "secp256k1", p256: "P-256", p384: "P-384", p521: "P-521" }[curve];
+      const affine = ec.ProjectivePoint.fromHex(publicKey).toAffine();
       const coord = (n: bigint) => {
-        const hex = n.toString(16).padStart(64, "0");
+        const hex = n.toString(16).padStart(coordBytes * 2, "0");
         return base64urlEncode(Uint8Array.from(hex.match(/../g)!.map((b) => parseInt(b, 16))));
       };
-      return {
-        kty: "EC",
-        crv: curve === "secp256k1" ? "secp256k1" : "P-256",
-        x: coord(affine.x),
-        y: coord(affine.y),
-      };
+      return { kty: "EC", crv, x: coord(affine.x), y: coord(affine.y) };
     }
   }
 }
@@ -95,22 +117,25 @@ export function publicKeyBytesFromJwk(jwk: {
   switch (jwk.crv) {
     case "Ed25519":
       return { curve: "ed25519", publicKey: base64urlDecode(jwk.x) };
+    case "Ed448":
+      return { curve: "ed448", publicKey: base64urlDecode(jwk.x) };
     case "secp256k1":
-    case "P-256": {
+    case "P-256":
+    case "P-384":
+    case "P-521": {
       if (typeof jwk.y !== "string") {
         throw new TypeError(`EC publicKeyJwk with crv ${jwk.crv} is missing y`);
       }
-      const curve: CurveName = jwk.crv === "secp256k1" ? "secp256k1" : "p256";
+      const curve: CurveName = (
+        { secp256k1: "secp256k1", "P-256": "p256", "P-384": "p384", "P-521": "p521" } as const
+      )[jwk.crv];
+      const ec = { secp256k1, p256, p384, p521 }[curve];
       const uncompressed = concatBytes(
         Uint8Array.of(0x04),
         base64urlDecode(jwk.x),
         base64urlDecode(jwk.y),
       );
-      const point =
-        curve === "secp256k1"
-          ? secp256k1.ProjectivePoint.fromHex(uncompressed)
-          : p256.ProjectivePoint.fromHex(uncompressed);
-      return { curve, publicKey: point.toRawBytes(true) };
+      return { curve, publicKey: ec.ProjectivePoint.fromHex(uncompressed).toRawBytes(true) };
     }
     default:
       throw new TypeError(`unsupported publicKeyJwk crv: ${jwk.crv}`);
@@ -125,10 +150,16 @@ function signWithCurve(
   switch (curve) {
     case "ed25519":
       return ed25519.sign(signingInput, privateKey);
+    case "ed448":
+      return ed448.sign(signingInput, privateKey);
     case "secp256k1":
       return secp256k1.sign(sha256(signingInput), privateKey).toCompactRawBytes();
     case "p256":
       return p256.sign(sha256(signingInput), privateKey).toCompactRawBytes();
+    case "p384":
+      return p384.sign(sha384(signingInput), privateKey).toCompactRawBytes();
+    case "p521":
+      return p521.sign(sha512(signingInput), privateKey).toCompactRawBytes();
   }
 }
 

@@ -5,21 +5,24 @@ import { evaluateUpdateRules } from "./updateRules.js";
 import type { WebplusDidDocument } from "./types.js";
 
 /**
- * Collect the public keys (JWS `kid` values) of all valid proofs on `doc`.
- * Invalid or malformed proofs are skipped, matching the reference
- * implementation, which only requires that the *valid* proofs satisfy the
- * update rules.
+ * Verify every proof on `doc` and return the signers' public keys (JWS `kid`
+ * values). Per the conformance test vectors, ANY malformed or
+ * cryptographically invalid proof rejects the document, even when other
+ * proofs would satisfy the update rules and even on root documents.
+ * (Valid proofs from keys the update rules do not name are fine.)
  */
 export function validProofKeys(doc: WebplusDidDocument): string[] {
   const payload = proofSigningInput(doc);
   const keys: string[] = [];
-  for (const proof of doc.proofs ?? []) {
+  (doc.proofs ?? []).forEach((proof, i) => {
     try {
       keys.push(verifyDetachedJws(proof, payload));
-    } catch {
-      // invalid proof: contributes nothing toward the update rules
+    } catch (err) {
+      throw new Error(
+        `invalid-proof-signature: proof ${i} is malformed or its signature does not verify (${err instanceof Error ? err.message : String(err)})`,
+      );
     }
-  }
+  });
   return keys;
 }
 
@@ -43,14 +46,23 @@ export class WebplusCryptoVerifier implements CryptoVerifier {
         `previous document (versionId ${prev.versionId}) has no updateRules; updates cannot be authorized`,
       );
     }
-    const keys = validProofKeys(doc);
+    const keys = validProofKeys(doc); // throws on any invalid proof
     if (!evaluateUpdateRules(prev.updateRules, keys)) {
       throw new Error(
         keys.length === 0
-          ? "document carries no cryptographically valid proofs"
+          ? "document carries no proofs"
           : `valid proof keys [${keys.join(", ")}] do not satisfy the previous document's updateRules`,
       );
     }
+    return true;
+  }
+
+  /**
+   * Root documents require no proofs, but any proofs present must still be
+   * cryptographically valid (conformance vector: root-with-invalid-proof).
+   */
+  async verifyRootProofs(doc: WebplusDidDocument): Promise<boolean> {
+    validProofKeys(doc); // throws on any invalid proof
     return true;
   }
 }

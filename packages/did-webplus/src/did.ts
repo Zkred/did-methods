@@ -7,7 +7,7 @@ const METHOD_PREFIX = "did:webplus:";
  * Self-hashes are multibase base64url (prefix `u`) values produced by the
  * `selfhash` self-addressing scheme, e.g. `uHiAgZ9Z9FJ38ZGeQRZoFxxXfbpvRsg2DuPXJ5vzR1Uy3HQ`.
  */
-const SELF_HASH_PATTERN = /^u[A-Za-z0-9_-]{20,}$/;
+const SELF_HASH_PATTERN = /^(u[A-Za-z0-9_-]{20,}|z[1-9A-HJ-NP-Za-km-z]{20,}|b[a-z2-7]{20,})$/;
 
 const HOST_PATTERN = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i;
 

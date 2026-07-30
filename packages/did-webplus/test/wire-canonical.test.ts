@@ -37,10 +37,17 @@ describe("JCS wire-format enforcement (spec: document must equal its JCS seriali
     ).rejects.toThrow(/not-jcs-canonical/);
   });
 
-  it("fetchMicroledger accepts canonical lines, including CRLF transport", async () => {
-    const crlf = [rootDoc, secondDoc].map((d) => canonicalize(d)).join("\r\n") + "\r\n";
-    const docs = await fetchMicroledger(DID, { fetchImpl: rawFetch(crlf) });
+  it("fetchMicroledger accepts canonical lines with a trailing newline", async () => {
+    const body = [rootDoc, secondDoc].map((d) => canonicalize(d)).join("\n") + "\n";
+    const docs = await fetchMicroledger(DID, { fetchImpl: rawFetch(body) });
     expect(docs.map((d) => d.versionId)).toEqual([0, 1]);
+  });
+
+  it("fetchMicroledger rejects CRLF line endings (strict per conformance vectors)", async () => {
+    const crlf = [rootDoc, secondDoc].map((d) => canonicalize(d)).join("\r\n") + "\r\n";
+    await expect(fetchMicroledger(DID, { fetchImpl: rawFetch(crlf) })).rejects.toThrow(
+      /not-jcs-canonical|malformed-jsonl-line/,
+    );
   });
 
   it("resolve (full mode) surfaces the violation as invalidDidDocument", async () => {

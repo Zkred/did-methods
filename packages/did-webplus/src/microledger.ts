@@ -15,6 +15,41 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+const VALID_FROM_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/;
+
+/**
+ * Strict spec validation of a `validFrom` timestamp: RFC 3339 with uppercase
+ * `T`/`Z`, `Z` offset only, at most millisecond precision, a real calendar
+ * date, and not before the Unix epoch. Returns an error message or null.
+ */
+export function validFromError(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return "valid-from-invalid-format: validFrom must be a string";
+  }
+  const m = VALID_FROM_PATTERN.exec(value);
+  if (!m) {
+    return `valid-from-invalid-format: ${value} is not RFC 3339 with uppercase T/Z and at most millisecond precision`;
+  }
+  const [, y, mo, d, h, mi, s] = m.map(Number) as unknown as number[];
+  const t = Date.UTC(y!, mo! - 1, d!, h!, mi!, s!);
+  const roundTrip = new Date(t);
+  if (
+    roundTrip.getUTCFullYear() !== y ||
+    roundTrip.getUTCMonth() !== mo! - 1 ||
+    roundTrip.getUTCDate() !== d ||
+    roundTrip.getUTCHours() !== h ||
+    roundTrip.getUTCMinutes() !== mi ||
+    roundTrip.getUTCSeconds() !== s
+  ) {
+    return `valid-from-invalid-format: ${value} is not a real calendar date/time`;
+  }
+  if (t < 0) {
+    return `valid-from-pre-epoch: ${value} is before the Unix epoch`;
+  }
+  return null;
+}
+
 /**
  * Pluggable cryptographic verifier for microledger entries.
  *
@@ -31,6 +66,11 @@ export interface CryptoVerifier {
   verifySelfHash(doc: WebplusDidDocument): Promise<boolean>;
   /** Return true if `doc.proofs` satisfy `prev.updateRules`. */
   verifyProofs(doc: WebplusDidDocument, prev: WebplusDidDocument): Promise<boolean>;
+  /**
+   * Optional: verify proofs present on a root document (which needs none,
+   * but any present must be cryptographically valid).
+   */
+  verifyRootProofs?(doc: WebplusDidDocument): Promise<boolean>;
 }
 
 /**
@@ -61,12 +101,20 @@ export function parseJcsCanonicalLines(jsonl: string): {
 } {
   const docs: WebplusDidDocument[] = [];
   const errors: MicroledgerValidationError[] = [];
-  const lines = jsonl
-    .split("\n")
-    .map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line))
-    .filter((line) => line.length > 0);
+  // Strict JSONL: lines are separated by exactly "\n" (a single trailing
+  // newline after the last document is permitted); CRLF endings and blank
+  // lines are malformed. An empty file is zero documents, not an error.
+  const body = jsonl.endsWith("\n") ? jsonl.slice(0, -1) : jsonl;
+  const lines = body.length === 0 ? [] : body.split("\n");
 
   lines.forEach((line, i) => {
+    if (line.trim().length === 0) {
+      errors.push({
+        versionId: -1,
+        message: `malformed-jsonl-line: line ${i + 1} is blank`,
+      });
+      return;
+    }
     let doc: WebplusDidDocument;
     try {
       doc = JSON.parse(line) as WebplusDidDocument;
@@ -98,7 +146,8 @@ export async function validateMicroledgerBytes(
 ): Promise<MicroledgerValidationResult> {
   const { docs, errors } = parseJcsCanonicalLines(jsonl);
   if (docs.length === 0) {
-    return { valid: false, errors: [...errors, { versionId: 0, message: "microledger is empty" }] };
+    // An empty did-documents.jsonl is well-formed: zero valid documents.
+    return { valid: errors.length === 0, errors };
   }
   const structural = await validateMicroledger(docs, options);
   return { valid: errors.length === 0 && structural.valid, errors: [...errors, ...structural.errors] };
@@ -162,10 +211,20 @@ export async function validateMicroledgerExtension(
       report(doc.versionId, `expected versionId ${i} at position ${i}, got ${doc.versionId}`);
     }
     if (typeof doc.selfHash !== "string" || doc.selfHash.length === 0) {
-      report(doc.versionId, "document is missing selfHash");
+      report(doc.versionId, "missing-required-field: document is missing selfHash");
     }
-    if (Number.isNaN(Date.parse(doc.validFrom))) {
-      report(doc.versionId, `invalid validFrom timestamp: ${doc.validFrom}`);
+    if (doc.updateRules === undefined || doc.updateRules === null) {
+      report(doc.versionId, "missing-required-field: document is missing updateRules");
+    }
+    if (typeof doc.id !== "string" || doc.id.length === 0) {
+      report(doc.versionId, "missing-required-field: document is missing id");
+    }
+    if (typeof doc.versionId !== "number") {
+      report(i, "missing-required-field: versionId must be a number");
+    }
+    const validFromProblem = validFromError(doc.validFrom);
+    if (validFromProblem) {
+      report(doc.versionId, validFromProblem);
     }
 
     if (i > 0) {
@@ -190,6 +249,13 @@ export async function validateMicroledgerExtension(
         }
       } catch (err) {
         report(doc.versionId, `selfHash verification failed: ${errorMessage(err)}`);
+      }
+      if (i === 0 && (doc.proofs?.length ?? 0) > 0 && verifier.verifyRootProofs) {
+        try {
+          await verifier.verifyRootProofs(doc);
+        } catch (err) {
+          report(doc.versionId, errorMessage(err));
+        }
       }
       if (i > 0) {
         try {

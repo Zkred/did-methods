@@ -84,7 +84,8 @@ describe("proof verification against Rust reference vectors", () => {
   it("rejects a proof whose payload was tampered with", () => {
     const tampered = structuredClone(secondDoc);
     tampered.updateRules = { key: "u7QG2O2Vm22e1g4v6VRxjY9Qgm9XqJAKf_b3cH6Oc4R0bhw" };
-    expect(validProofKeys(tampered)).toEqual([]);
+    // strict per conformance vectors: any invalid proof throws
+    expect(() => validProofKeys(tampered)).toThrow(/invalid-proof-signature/);
   });
 
   it("proof signing input excludes proofs and uses placeholder hashes", () => {

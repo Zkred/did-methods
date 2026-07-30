@@ -11,9 +11,127 @@ import { sha3_224, sha3_256, sha3_384, sha3_512 } from "@noble/hashes/sha3";
 
 /**
  * Multibase-encoded multihash values ("MBHash") and multicodec public keys
- * ("MBPubKey") as used by did:webplus. Only the base64url multibase prefix
- * (`u`) is currently emitted by the reference implementation.
+ * ("MBPubKey") as used by did:webplus. Supported multibase prefixes:
+ * `u` (base64url, the reference implementation's default), `z` (base58btc),
+ * and `b` (base32 lower, RFC 4648, no padding). Derived values (placeholders,
+ * computed hashes) preserve the base of the value they derive from.
  */
+
+export type MultibasePrefix = "u" | "z" | "b";
+
+// --- base58btc ---------------------------------------------------------
+
+const B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const B58_MAP = new Map([...B58_ALPHABET].map((c, i) => [c, BigInt(i)]));
+
+function base58btcEncode(bytes: Uint8Array): string {
+  let n = 0n;
+  for (const b of bytes) n = n * 256n + BigInt(b);
+  let out = "";
+  while (n > 0n) {
+    out = B58_ALPHABET[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  for (const b of bytes) {
+    if (b !== 0) break;
+    out = "1" + out;
+  }
+  return out;
+}
+
+function base58btcDecode(value: string): Uint8Array {
+  let n = 0n;
+  for (const c of value) {
+    const v = B58_MAP.get(c);
+    if (v === undefined) throw new TypeError(`invalid base58btc character: ${c}`);
+    n = n * 58n + v;
+  }
+  const bytes: number[] = [];
+  while (n > 0n) {
+    bytes.unshift(Number(n % 256n));
+    n /= 256n;
+  }
+  for (const c of value) {
+    if (c !== "1") break;
+    bytes.unshift(0);
+  }
+  return Uint8Array.from(bytes);
+}
+
+// --- base32 lower (RFC 4648, no padding) --------------------------------
+
+const B32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+const B32_MAP = new Map([...B32_ALPHABET].map((c, i) => [c, i]));
+
+function base32lowerEncode(bytes: Uint8Array): string {
+  let out = "";
+  let buffer = 0;
+  let bits = 0;
+  for (const b of bytes) {
+    buffer = (buffer << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += B32_ALPHABET[(buffer >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    out += B32_ALPHABET[(buffer << (5 - bits)) & 31];
+  }
+  return out;
+}
+
+function base32lowerDecode(value: string): Uint8Array {
+  let buffer = 0;
+  let bits = 0;
+  const out: number[] = [];
+  for (const c of value) {
+    const v = B32_MAP.get(c);
+    if (v === undefined) throw new TypeError(`invalid base32lower character: ${c}`);
+    buffer = (buffer << 5) | v;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((buffer >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Uint8Array.from(out);
+}
+
+// --- multibase ----------------------------------------------------------
+
+export function decodeMultibase(value: string, what: string): {
+  base: MultibasePrefix;
+  bytes: Uint8Array;
+} {
+  const prefix = value[0];
+  const rest = value.slice(1);
+  switch (prefix) {
+    case "u":
+      return { base: "u", bytes: base64urlDecode(rest) };
+    case "z":
+      return { base: "z", bytes: base58btcDecode(rest) };
+    case "b":
+      return { base: "b", bytes: base32lowerDecode(rest) };
+    default:
+      throw new TypeError(
+        `${what} must be multibase base64url ("u"), base58btc ("z"), or base32lower ("b"): ${value}`,
+      );
+  }
+}
+
+export function encodeMultibase(base: MultibasePrefix, bytes: Uint8Array): string {
+  switch (base) {
+    case "u":
+      return `u${base64urlEncode(bytes)}`;
+    case "z":
+      return `z${base58btcEncode(bytes)}`;
+    case "b":
+      return `b${base32lowerEncode(bytes)}`;
+  }
+}
+
+// --- hash functions -----------------------------------------------------
 
 type HashFn = (data: Uint8Array) => Uint8Array;
 
@@ -31,19 +149,29 @@ const HASH_FUNCTIONS: Record<number, { name: string; fn: HashFn }> = {
 };
 
 /** Supported signature curves and their multicodec public-key codes. */
-export type CurveName = "ed25519" | "secp256k1" | "p256";
+export type CurveName = "ed25519" | "ed448" | "secp256k1" | "p256" | "p384" | "p521";
 
 const PUB_KEY_CODE_BY_CURVE: Record<CurveName, number> = {
   ed25519: 0xed,
   secp256k1: 0xe7,
   p256: 0x1200,
+  p384: 0x1201,
+  p521: 0x1202,
+  ed448: 0x1203,
 };
 
-/** Raw key byte length per curve: 32 for Ed25519, 33 (compressed point) for the EC curves. */
+/**
+ * Raw key byte length per curve: the raw key for Edwards curves (32 for
+ * Ed25519, 57 for Ed448) and the compressed point for the EC curves
+ * (33 / 49 / 67 bytes), matching the reference implementation's `mbx` crate.
+ */
 const PUB_KEY_LENGTH_BY_CURVE: Record<CurveName, number> = {
   ed25519: 32,
+  ed448: 57,
   secp256k1: 33,
   p256: 33,
+  p384: 49,
+  p521: 67,
 };
 
 const CURVE_BY_PUB_KEY_CODE = new Map<number, CurveName>(
@@ -78,6 +206,8 @@ const HASH_CODE_BY_NAME: Record<HashFunctionName, number> = {
 };
 
 export interface ParsedMbHash {
+  /** Multibase prefix the value was encoded with. */
+  base: MultibasePrefix;
   /** Multicodec hash function code (e.g. 0x1e for BLAKE3). */
   code: number;
   /** Digest length in bytes. */
@@ -85,16 +215,9 @@ export interface ParsedMbHash {
   digest: Uint8Array;
 }
 
-function decodeMultibase(value: string, what: string): Uint8Array {
-  if (!value.startsWith("u")) {
-    throw new TypeError(`${what} must be multibase base64url (prefix "u"): ${value}`);
-  }
-  return base64urlDecode(value.slice(1));
-}
-
 /** Parse a multibase multihash string like `uHiAgZ9Z9FJ38...`. */
 export function parseMbHash(mbHash: string): ParsedMbHash {
-  const bytes = decodeMultibase(mbHash, "MBHash");
+  const { base, bytes } = decodeMultibase(mbHash, "MBHash");
   const code = varintDecode(bytes, 0);
   const length = varintDecode(bytes, code.length);
   const digest = bytes.subarray(code.length + length.length);
@@ -103,21 +226,25 @@ export function parseMbHash(mbHash: string): ParsedMbHash {
       `MBHash digest length ${digest.length} does not match declared length ${length.value}`,
     );
   }
-  return { code: code.value, length: length.value, digest };
+  return { base, code: code.value, length: length.value, digest };
 }
 
-function encodeMbHash(code: number, digest: Uint8Array): string {
-  return `u${base64urlEncode(concatBytes(varintEncode(code), varintEncode(digest.length), digest))}`;
+function encodeMbHash(code: number, digest: Uint8Array, base: MultibasePrefix): string {
+  return encodeMultibase(
+    base,
+    concatBytes(varintEncode(code), varintEncode(digest.length), digest),
+  );
 }
 
 /**
  * The placeholder value for a hash function: the multihash header followed by
- * an all-zeros digest. Self-hash slots are set to this before hashing.
+ * an all-zeros digest, in the same multibase as the template. Self-hash slots
+ * are set to this before hashing.
  */
 export function placeholderMbHash(templateMbHash: string): string {
-  const { code, length } = parseMbHash(templateMbHash);
+  const { base, code, length } = parseMbHash(templateMbHash);
   requireHashFunction(code);
-  return encodeMbHash(code, new Uint8Array(length));
+  return encodeMbHash(code, new Uint8Array(length), base);
 }
 
 function requireHashFunction(code: number): { name: string; fn: HashFn } {
@@ -128,44 +255,65 @@ function requireHashFunction(code: number): { name: string; fn: HashFn } {
   return entry;
 }
 
-/** Hash `data` with the same hash function as `templateMbHash`, producing an MBHash string. */
+/**
+ * Hash `data` with the same hash function and multibase as `templateMbHash`,
+ * producing an MBHash string byte-comparable with values from that source.
+ */
 export function hashAsMbHash(templateMbHash: string, data: Uint8Array): string {
-  const { code } = parseMbHash(templateMbHash);
+  const { base, code } = parseMbHash(templateMbHash);
   const digest = requireHashFunction(code).fn(data);
-  return encodeMbHash(code, digest);
+  return encodeMbHash(code, digest, base);
 }
 
 /** Hash `data` with a hash function chosen by name, producing an MBHash string. */
-export function hashWithFunction(name: HashFunctionName, data: Uint8Array): string {
+export function hashWithFunction(
+  name: HashFunctionName,
+  data: Uint8Array,
+  base: MultibasePrefix = "u",
+): string {
   const code = HASH_CODE_BY_NAME[name];
   if (code === undefined) {
     throw new TypeError(`unsupported hash function name: ${name}`);
   }
   const digest = requireHashFunction(code).fn(data);
-  return encodeMbHash(code, digest);
+  return encodeMbHash(code, digest, base);
 }
 
 /** The all-zeros placeholder MBHash for a hash function chosen by name. */
-export function placeholderForFunction(name: HashFunctionName): string {
-  return placeholderMbHash(hashWithFunction(name, new Uint8Array(0)));
+export function placeholderForFunction(
+  name: HashFunctionName,
+  base: MultibasePrefix = "u",
+): string {
+  return placeholderMbHash(hashWithFunction(name, new Uint8Array(0), base));
 }
 
 /**
  * Encode raw public key bytes as a multibase multicodec key string
- * (e.g. `u7Q...` for Ed25519). EC curves expect the 33-byte compressed point,
+ * (e.g. `u7Q...` for Ed25519). EC curves expect the compressed point,
  * matching the reference implementation's `mbx` crate.
  */
-export function formatMbPubKey(keyBytes: Uint8Array, curve: CurveName = "ed25519"): string {
+export function formatMbPubKey(
+  keyBytes: Uint8Array,
+  curve: CurveName = "ed25519",
+  base: MultibasePrefix = "u",
+): string {
   const expected = PUB_KEY_LENGTH_BY_CURVE[curve];
   if (keyBytes.length !== expected) {
     throw new TypeError(`${curve} public key must be ${expected} bytes, got ${keyBytes.length}`);
   }
-  return `u${base64urlEncode(concatBytes(varintEncode(PUB_KEY_CODE_BY_CURVE[curve]), keyBytes))}`;
+  return encodeMultibase(
+    base,
+    concatBytes(varintEncode(PUB_KEY_CODE_BY_CURVE[curve]), keyBytes),
+  );
 }
 
 /** Decode a multibase multicodec public key like `u7QG2O2Vm...` into its curve and raw key bytes. */
-export function parseMbPubKey(mbPubKey: string): { curve: CurveName; keyBytes: Uint8Array } {
-  const bytes = decodeMultibase(mbPubKey, "MBPubKey");
+export function parseMbPubKey(mbPubKey: string): {
+  curve: CurveName;
+  keyBytes: Uint8Array;
+  base: MultibasePrefix;
+} {
+  const { base, bytes } = decodeMultibase(mbPubKey, "MBPubKey");
   const code = varintDecode(bytes, 0);
   const curve = CURVE_BY_PUB_KEY_CODE.get(code.value);
   if (!curve) {
@@ -176,5 +324,5 @@ export function parseMbPubKey(mbPubKey: string): { curve: CurveName; keyBytes: U
   if (keyBytes.length !== expected) {
     throw new TypeError(`${curve} public key must be ${expected} bytes, got ${keyBytes.length}`);
   }
-  return { curve, keyBytes };
+  return { curve, keyBytes, base };
 }
