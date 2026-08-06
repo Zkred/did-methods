@@ -18,6 +18,15 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9
 
+  packages/did-cid:
+    dependencies:
+      '@zkred/did-core':
+        specifier: workspace:^
+        version: link:../did-core
+      did-resolver:
+        specifier: ^4.1.0 || ^5.0.0
+        version: 5.0.1
+
   packages/did-core: {}
 
   packages/did-webplus:

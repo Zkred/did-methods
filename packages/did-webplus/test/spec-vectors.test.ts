@@ -13,23 +13,23 @@ import { validateMicroledgerBytes } from "../src/microledger.js";
 const dir = process.env.SPEC_VECTOR_DIR;
 const available = dir !== undefined && existsSync(`${dir}/index.json`);
 
-describe.skipIf(!available)("official did:webplus conformance test vectors", () => {
-  const index = JSON.parse(readFileSync(`${dir}/index.json`, "utf8")) as {
-    vectors: Record<string, { did: string; path: string }>;
-  };
-
-  it.each(Object.entries(index.vectors))("%s", async (_name, entry) => {
-    const tv = JSON.parse(readFileSync(`${dir}/${entry.path}/test-vector.json`, "utf8")) as {
-      did: string;
-      expected: { valid: boolean };
+if (available) {
+  describe("official did:webplus conformance test vectors", () => {
+    const index = JSON.parse(readFileSync(`${dir}/index.json`, "utf8")) as {
+      vectors: Record<string, { did: string; path: string }>;
     };
-    const raw = readFileSync(`${dir}/${entry.path}/did-documents.jsonl`, "utf8");
-    const result = await validateMicroledgerBytes(raw, { expectedDid: tv.did });
-    expect(result.valid).toBe(tv.expected.valid);
-  });
-});
 
-if (!available) {
+    it.each(Object.entries(index.vectors))("%s", async (_name, entry) => {
+      const tv = JSON.parse(readFileSync(`${dir}/${entry.path}/test-vector.json`, "utf8")) as {
+        did: string;
+        expected: { valid: boolean };
+      };
+      const raw = readFileSync(`${dir}/${entry.path}/did-documents.jsonl`, "utf8");
+      const result = await validateMicroledgerBytes(raw, { expectedDid: tv.did });
+      expect(result.valid).toBe(tv.expected.valid);
+    });
+  });
+} else {
   describe("official did:webplus conformance test vectors", () => {
     it.skip("set SPEC_VECTOR_DIR to a did-webplus-spec test-vector checkout to run", () => {});
   });
