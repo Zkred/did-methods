@@ -1,6 +1,6 @@
 {
   "name": "@zkred/did-cid",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "did:cid resolution as a did-resolver plugin — thin client for an Archon gatekeeper",
   "license": "Apache-2.0",
   "repository": {
