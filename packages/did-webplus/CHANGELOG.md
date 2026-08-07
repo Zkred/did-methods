@@ -1,5 +1,11 @@
 # @zkred/did-webplus
 
+## 0.9.1
+
+### Patch Changes
+
+- 7f58898: An empty `did-documents.jsonl` now fails verification (no root DID document means nothing can be verified), tracking the `jsonl-empty-file` conformance vector's change to a negative test on 2026-08-07.
+
 ## 0.9.0
 
 ### Minor Changes
