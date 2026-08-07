@@ -146,8 +146,13 @@ export async function validateMicroledgerBytes(
 ): Promise<MicroledgerValidationResult> {
   const { docs, errors } = parseJcsCanonicalLines(jsonl);
   if (docs.length === 0) {
-    // An empty did-documents.jsonl is well-formed: zero valid documents.
-    return { valid: errors.length === 0, errors };
+    // Per the conformance vectors (jsonl-empty-file, negative since
+    // 2026-08-07): an empty microledger has no root DID document and
+    // therefore cannot be verified.
+    return {
+      valid: false,
+      errors: [...errors, { versionId: 0, message: "microledger is empty (no root DID document)" }],
+    };
   }
   const structural = await validateMicroledger(docs, options);
   return { valid: errors.length === 0 && structural.valid, errors: [...errors, ...structural.errors] };
