@@ -34,6 +34,10 @@ const result = await resolver.resolve(
 );
 ```
 
+Archetech operates a public node at `https://archon.technology` that works as a
+`gatekeeperUrl` for evaluation (remember: whichever gatekeeper you configure is
+the party you trust for resolution; run your own node for production use).
+
 DID URL query parameters `versionTime` and `versionSequence` (and the standard
 `service` / `relativeRef`) are passed through to the gatekeeper; fragments are
 left for client-side processing per DID Core.
