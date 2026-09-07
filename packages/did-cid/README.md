@@ -42,18 +42,25 @@ DID URL query parameters `versionTime` and `versionSequence` (and the standard
 `service` / `relativeRef`) are passed through to the gatekeeper; fragments are
 left for client-side processing per DID Core.
 
-### All three DIF Recommended methods in one resolver
+### All four DIF Recommended methods in one resolver
+
+The `@zkred` packages cover did:webvh, did:webplus, and did:cid; the fourth
+Recommended method, did:ethr, is served by its first-party
+[`ethr-did-resolver`](https://www.npmjs.com/package/ethr-did-resolver) and
+composes into the same registry:
 
 ```ts
 import { Resolver } from "did-resolver";
 import { getResolver as webplus } from "@zkred/did-webplus";
 import { getResolver as webvh } from "@zkred/did-webvh";
 import { getResolver as cid } from "@zkred/did-cid";
+import { getResolver as ethr } from "ethr-did-resolver";
 
 const resolver = new Resolver({
   ...webplus(),
   ...webvh(),
   ...cid({ gatekeeperUrl: "https://my-gatekeeper.example" }),
+  ...ethr({ networks: [{ name: "mainnet", rpcUrl: "https://mainnet.infura.io/v3/<id>" }] }),
 });
 ```
 

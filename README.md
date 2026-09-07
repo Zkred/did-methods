@@ -15,9 +15,12 @@ published as small per-method packages that plug into the
 | [`@zkred/did-cid`](packages/did-cid) | [`did:cid`](https://github.com/archetech/archon) | Thin `did-resolver` client for an Archon gatekeeper |
 | [`@zkred/did-core`](packages/did-core) | — | Shared DID data-model types, resolution errors, and HTTP utilities |
 
-Together these cover **all three DIF Recommended DID methods** (did:webvh,
-did:webplus, and did:cid) in one `did-resolver` registry. New methods land as
-new packages in `packages/`.
+These provide **three of the four DIF Recommended DID methods** (did:webvh,
+did:webplus, and did:cid), the three that lacked a JS-native `did-resolver`
+package. The fourth, did:ethr, already has a first-party plugin
+([`ethr-did-resolver`](https://www.npmjs.com/package/ethr-did-resolver)) that
+composes into the same registry, so all four resolve through one `Resolver`.
+New methods land as new packages in `packages/`.
 
 ## Quick start
 
