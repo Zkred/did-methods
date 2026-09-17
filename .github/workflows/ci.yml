@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Daily: the official did:webplus conformance vectors are cloned at test
+    # time, so upstream vector changes must surface without a local commit.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
 
 jobs:
   test:
