@@ -15,6 +15,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node/fileStore.d.ts",
+      "default": "./dist/node/fileStore.js"
     }
   },
   "files": [
@@ -39,6 +43,7 @@
     }
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "did-resolver": "^5.0.1"
   },
   "keywords": [

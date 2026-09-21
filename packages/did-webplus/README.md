@@ -45,8 +45,20 @@ cost per re-resolution, plus:
   settled `?versionTime=`) queries answer from the store with no network
   request at all.
 
-Persistence defaults to a shared in-memory store. Supply your own
-`MicroledgerStore` (`get`/`put`) for durability, or disable it:
+Persistence defaults to a shared in-memory store, which only helps within one
+running process. For durability across process restarts — a CLI invoked
+fresh each run, a server that redeploys — use the bundled filesystem store
+(Node.js only, so it's a separate subpath and never pulled into a browser
+bundle of the main entry point):
+
+```ts
+import { FileMicroledgerStore } from "@zkred/did-webplus/node";
+
+resolve(did, { store: new FileMicroledgerStore("./did-store") });
+```
+
+Or supply any `MicroledgerStore` (`get`/`put`) of your own — a database, an
+IndexedDB wrapper for the browser — or disable persistence entirely:
 
 ```ts
 resolve(did, { store: myDurableStore });
