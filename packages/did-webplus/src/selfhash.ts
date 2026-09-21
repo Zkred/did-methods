@@ -67,25 +67,40 @@ function replaceSelfHashQueryValue(didUrl: string, value: string): string {
 }
 
 /**
- * Collect the values of all self-hash slots. Mirrors the reference
- * implementation's slot enumeration: for non-root documents, only the
- * `selfHash` field participates in the equality check.
+ * Collect the values of all self-hash slots. Every slot `withSelfHashSlotsSetTo`
+ * overwrites must appear here and agree with `doc.selfHash` *before* that
+ * overwrite happens — otherwise the overwrite silently erases evidence of a
+ * forged slot (it replaces whatever value was there with a shared
+ * placeholder, so two inconsistent values collapse to the same post-
+ * substitution bytes and the tamper goes undetected by hash comparison
+ * alone). For a ROOT document the DID-derived slots (the DID's own last
+ * component, and each VM's `id`/`controller` DID component) carry the root
+ * self-hash too; for a NON-ROOT document those DID components hold the
+ * immutable root hash instead and are not checked here, but every VM's
+ * `id`/`kid` `selfHash` query parameter is still a slot in both cases.
  */
 export function collectSelfHashSlots(doc: WebplusDidDocument): string[] {
-  if (!isRootDocument(doc)) {
-    return [doc.selfHash];
+  const root = isRootDocument(doc);
+  const slots: string[] = [doc.selfHash];
+  if (root) {
+    slots.push(lastDidComponent(doc.id));
   }
-  const slots: string[] = [lastDidComponent(doc.id), doc.selfHash];
   for (const vm of doc.verificationMethod ?? []) {
     const { base } = splitDidUrl(vm.id);
-    slots.push(lastDidComponent(base), selfHashQueryValue(vm.id));
-    if (vm.controller === doc.id) {
-      slots.push(lastDidComponent(vm.controller));
+    if (root) {
+      slots.push(lastDidComponent(base));
+      if (vm.controller === doc.id) {
+        slots.push(lastDidComponent(vm.controller));
+      }
     }
+    slots.push(selfHashQueryValue(vm.id));
     const kid = vm.publicKeyJwk?.kid;
     if (typeof kid === "string") {
       const { base: kidBase } = splitDidUrl(kid);
-      slots.push(lastDidComponent(kidBase), selfHashQueryValue(kid));
+      if (root) {
+        slots.push(lastDidComponent(kidBase));
+      }
+      slots.push(selfHashQueryValue(kid));
     }
   }
   return slots;

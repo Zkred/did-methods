@@ -59,6 +59,32 @@ describe("self-hash verification against Rust reference vectors", () => {
     const result = verifyDocumentSelfHash(tampered);
     expect(result.valid).toBe(false);
   });
+
+  it("rejects a non-root document whose VM id selfHash slot doesn't match doc.selfHash", () => {
+    // Regression for a forged-slot bypass: withSelfHashSlotsSetTo overwrites
+    // every VM id/kid selfHash query value to a shared placeholder before
+    // hashing, which erases a lone mismatched slot instead of exposing it in
+    // the recomputed hash. collectSelfHashSlots must catch it beforehand.
+    const tampered = structuredClone(secondDoc);
+    tampered.verificationMethod![0]!.id = tampered.verificationMethod![0]!.id.replace(
+      secondDoc.selfHash,
+      "uHiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    );
+    const result = verifyDocumentSelfHash(tampered);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/self-hash slot value .* does not match selfHash/);
+  });
+
+  it("rejects a non-root document whose VM kid selfHash slot doesn't match doc.selfHash", () => {
+    const tampered = structuredClone(secondDoc);
+    tampered.verificationMethod![0]!.publicKeyJwk!.kid = tampered.verificationMethod![0]!.publicKeyJwk!.kid!.replace(
+      secondDoc.selfHash,
+      "uHiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    );
+    const result = verifyDocumentSelfHash(tampered);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/self-hash slot value .* does not match selfHash/);
+  });
 });
 
 describe("proof verification against Rust reference vectors", () => {
