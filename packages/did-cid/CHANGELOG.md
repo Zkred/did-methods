@@ -1,5 +1,12 @@
 # @zkred/did-cid
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [303f632]
+  - @zkred/did-core@0.4.0
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @zkred/did-webvh
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [303f632]
+  - @zkred/did-core@0.4.0
+
 ## 0.1.2
 
 ### Patch Changes
