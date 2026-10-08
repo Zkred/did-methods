@@ -13,7 +13,7 @@ published as small per-method packages that plug into the
 | [`@zkred/did-webplus`](packages/did-webplus) | [`did:webplus`](https://ledgerdomain.github.io/did-webplus-spec) | First TS/JS-native implementation: parsing, verified resolution, controller operations |
 | [`@zkred/did-webvh`](packages/did-webvh) | [`did:webvh`](https://identity.foundation/didwebvh/) | Thin `did-resolver` adapter over DIF's [`didwebvh-ts`](https://www.npmjs.com/package/didwebvh-ts) |
 | [`@zkred/did-cid`](packages/did-cid) | [`did:cid`](https://github.com/archetech/archon) | Thin `did-resolver` client for an Archon gatekeeper |
-| [`@zkred/did-core`](packages/did-core) | — | Shared DID data-model types, resolution errors, and HTTP utilities |
+| [`@zkred/did-core`](packages/did-core) | n/a | Shared DID data-model types, resolution errors, and HTTP utilities |
 
 These provide **three of the four DIF Recommended DID methods** (did:webvh,
 did:webplus, and did:cid), the three that lacked a JS-native `did-resolver`
@@ -51,7 +51,7 @@ and merging that publishes to npm with provenance.
 
 Early stage. `@zkred/did-webplus` implements DID parsing, VDR resolution, and
 structural microledger validation, with cryptographic verification pluggable via the
-`CryptoVerifier` interface — see its [roadmap](packages/did-webplus/README.md#status--roadmap).
+`CryptoVerifier` interface; see its [roadmap](packages/did-webplus/README.md#status--roadmap).
 
 ## License
 

@@ -12,7 +12,7 @@
   - `resolve()` now accepts five new options, all defaulting to `false`:
     `requestCreate`, `requestNext`, `requestLatest`, `requestDeactivated`, and
     `localResolutionOnly`. Each is honored by the default (Full DID Resolver)
-    mode, which now determines — before any network request — whether the
+    mode, which now determines, before any network request, whether the
     requested document and every requested metadata group are already
     satisfiable from the persisted store, per the spec's locality rules
     (including the deactivation short-circuits: a deactivated local tip proves
@@ -43,8 +43,8 @@
     `fetchedUpdatesFromVDR`.
   - A VDR that errors or is unreachable now falls back to already-verified
     local data when it can answer the request (the specific document asked
-    for, or — for a plain DID, which the locality rules never call "locally
-    satisfiable" on their own — the local tip as a best-effort answer),
+    for, or, for a plain DID (which the locality rules never call "locally
+    satisfiable" on its own), the local tip as a best-effort answer),
     succeeding with `fetchedUpdatesFromVDR: true` rather than failing outright.
     A query for a specific version/selfHash/versionTime not yet known locally
     gets no such fallback. Verification or duplicity failures never fall back,

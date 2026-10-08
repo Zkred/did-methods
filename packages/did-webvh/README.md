@@ -4,8 +4,8 @@
 [`did-resolver`](https://www.npmjs.com/package/did-resolver) plugin.
 
 This is intentionally a **thin adapter** over
-[`didwebvh-ts`](https://www.npmjs.com/package/didwebvh-ts) — the implementation maintained
-by the Decentralized Identity Foundation — rather than a reimplementation. It reshapes
+[`didwebvh-ts`](https://www.npmjs.com/package/didwebvh-ts) (the implementation maintained
+by the Decentralized Identity Foundation) rather than a reimplementation. It reshapes
 `didwebvh-ts` output into the W3C DID resolution result structure and plugs into the
 `did-resolver` registry, so did:webvh composes cleanly with other methods (like its sibling
 [`@zkred/did-webplus`](https://www.npmjs.com/package/@zkred/did-webplus)).

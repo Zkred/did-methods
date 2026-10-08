@@ -43,8 +43,8 @@ const result = await resolver.resolve(
 
 The default is a **Full DID Resolver** in the spec's terminology: the DID's
 microledger is fetched from the spec's single resolution URL
-(`…/did-documents.jsonl`), cryptographically verified — self-hashes, proofs
-against `updateRules`, chain integrity, and the JCS wire-format rule — and the
+(`…/did-documents.jsonl`), cryptographically verified (self-hashes, proofs
+against `updateRules`, chain integrity, and the JCS wire-format rule), and the
 verified portion is **persisted**. Repeated resolution then issues a
 range-based HTTP GET and verifies only new documents, giving near-constant
 cost per re-resolution, plus:
@@ -82,8 +82,8 @@ nothing is populated speculatively.
 `didResolutionMetadata.error` for a resolution-process failure (not found,
 conflicting `selfHash`/`versionId`, `localResolutionOnly` with insufficient
 local data, the VDR unreachable, failed verification) is an
-[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem Details object —
-`{ type, title, detail }` — matching the spec's reference implementations,
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem Details object
+(`{ type, title, detail }`), matching the spec's reference implementations,
 rather than the short string code most DID methods use:
 
 ```ts
@@ -96,8 +96,8 @@ A malformed DID string (a syntax error, before resolution begins) still
 carries the standard `@zkred/did-core` short code (e.g. `"invalidDid"`).
 
 Persistence defaults to a shared in-memory store, which only helps within one
-running process. For durability across process restarts — a CLI invoked
-fresh each run, a server that redeploys — use the bundled filesystem store
+running process. For durability across process restarts (a CLI invoked
+fresh each run, a server that redeploys), use the bundled filesystem store
 (Node.js only, so it's a separate subpath and never pulled into a browser
 bundle of the main entry point):
 
@@ -107,8 +107,8 @@ import { FileMicroledgerStore } from "@zkred/did-webplus/node";
 resolve(did, { store: new FileMicroledgerStore("./did-store") });
 ```
 
-Or supply any `MicroledgerStore` (`get`/`put`) of your own — a database, an
-IndexedDB wrapper for the browser — or disable persistence entirely:
+Or supply any `MicroledgerStore` (`get`/`put`) of your own (a database, an
+IndexedDB wrapper for the browser), or disable persistence entirely:
 
 ```ts
 resolve(did, { store: myDurableStore });
@@ -117,12 +117,12 @@ resolve(did, { store: null }); // full fetch + verify on every resolution
 
 Two other modes exist via `mode`:
 
-- `mode: "thin"` — a **Thin DID Resolver** per the spec: delegates fetching,
+- `mode: "thin"`: a **Thin DID Resolver** per the spec: delegates fetching,
   verification, and archiving to a trusted VDG (the `vdg` option is
   required); one request per resolution. Fetches only the resolved document,
   so `requestCreate`/`requestNext`/`requestLatest`/`localResolutionOnly`
   aren't honored (they need the rest of the history).
-- `mode: "unverified"` — development/testing only. Enforces the JCS wire
+- `mode: "unverified"`: development/testing only. Enforces the JCS wire
   format but performs no cryptographic verification and trusts the host.
   Non-conformant; never use in production.
 
@@ -162,7 +162,7 @@ await submitDidUpdate(tombstone); // updateRules {} makes this permanent
 ```
 
 Documents are constructed exactly as the reference implementation does:
-placeholder self-hashes, proofs attached, then self-hashed — so everything
+placeholder self-hashes, proofs attached, then self-hashed, so everything
 you create passes `validateMicroledger`'s full cryptographic verification.
 
 ### Parse and inspect DIDs
@@ -177,7 +177,7 @@ resolutionUrl(parsed, { versionId: 2 }, { scheme: "http" });
 // http://localhost:8085/dids/uHiAg.../did/versionId/2.json
 ```
 
-### Validate a microledger — full cryptographic verification
+### Validate a microledger: full cryptographic verification
 
 ```ts
 import { validateMicroledger } from "@zkred/did-webplus";
@@ -189,17 +189,17 @@ const { valid, errors } = await validateMicroledger(didDocuments, {
 
 Validation is cryptographic by default:
 
-- **Self-hash verification** — every document's `selfHash` is recomputed via the
+- **Self-hash verification**: every document's `selfHash` is recomputed via the
   selfhash self-addressing scheme (JCS/RFC 8785 canonicalization + multibase
   multihash; BLAKE3, SHA-2, and SHA-3 families), including all self-hash slots in the
   `id`, verification method ids/kids, and controllers.
-- **Proof verification** — each update's detached Ed25519 JWS proofs
+- **Proof verification**: each update's detached Ed25519 JWS proofs
   (RFC 7797, `b64: false`) are verified and checked against the predecessor
   document's `updateRules` (`key`, `hashedKey`, `any`, `all`, and weighted
   `atLeast`/`of` thresholds).
 - Plus the structural checks: hash chaining, contiguous versionIds, timestamp
   monotonicity.
-- **Wire-format rule** — when validating from raw bytes (`resolve` in full
+- **Wire-format rule**: when validating from raw bytes (`resolve` in full
   mode, or `validateMicroledgerBytes`), each `did-documents.jsonl`
   line must be byte-equal to its own JCS serialization, as the spec requires;
   reordered keys or stray whitespace are rejected as `not-jcs-canonical`. The
@@ -230,7 +230,7 @@ The `did:webplus` spec itself is still marked *proposed*. Roadmap:
 ### VDG resolution
 
 Pass `vdg` to resolve through a Verifiable Data Gateway instead of the DID's
-VDR — the VDG's `/webplus/v1/resolve` endpoint serves single documents, and
+VDR. The VDG's `/webplus/v1/resolve` endpoint serves single documents, and
 `/webplus/v1/fetch/…/did-documents.jsonl` serves full microledgers for
 full-mode verification:
 
@@ -241,7 +241,7 @@ const resolver = new Resolver(getResolver({ vdg: "vdg.example.com" }));
 ### Signature curves
 
 Ed25519 (`Ed25519`), secp256k1 (`ES256K`), and P-256 (`ES256`) are supported
-for verification methods, proofs, and update rules — key pairs via
+for verification methods, proofs, and update rules, with key pairs via
 `ed25519KeyPair` / `secp256k1KeyPair` / `p256KeyPair`, with EC public keys
 encoded as 33-byte compressed points per the reference implementation's
 multicodec conventions. Note: Ed25519 is conformance-tested against published
