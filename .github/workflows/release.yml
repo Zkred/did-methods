@@ -25,7 +25,9 @@ jobs:
           cache: pnpm
       # npm >= 11.5.1 is required for OIDC trusted publishing; publishing
       # authenticates via the npm Trusted Publisher connection (no token).
-      - run: npm install -g npm@latest
+      # Pinned to 11: npm 12 returns `npm info --json` as an array, which
+      # @changesets/cli 2.31 misreads as "never published" and republishes.
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - name: Create release PR or publish to npm
         uses: changesets/action@v1
