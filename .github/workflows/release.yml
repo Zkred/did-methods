@@ -9,6 +9,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  packages: write
   id-token: write
 
 jobs:
@@ -30,6 +31,7 @@ jobs:
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - name: Create release PR or publish to npm
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm release
@@ -37,3 +39,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+      # Mirror each package to GitHub Packages so it shows in the repo's
+      # Packages sidebar. npmjs stays the primary registry. Runs whenever the
+      # step above ran in publish mode, and skips versions GitHub already has.
+      # `pnpm pack` rewrites `workspace:^` ranges; `--provenance=false`
+      # overrides publishConfig because provenance is an npmjs feature.
+      - name: Mirror to GitHub Packages
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPR: https://npm.pkg.github.com
+        run: |
+          set -euo pipefail
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc"
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc"
+          for dir in packages/*/; do
+            name=$(node -p "require('./${dir}package.json').name")
+            version=$(node -p "require('./${dir}package.json').version")
+            if npm view "$name@$version" version --registry "$GPR" >/dev/null 2>&1; then
+              echo "$name@$version is already on GitHub Packages"
+              continue
+            fi
+            tarball=$(cd "$dir" && pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
+            npm publish "$tarball" --registry "$GPR" --provenance=false
+          done
