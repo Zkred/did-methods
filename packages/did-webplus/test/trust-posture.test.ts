@@ -24,8 +24,7 @@ describe("resolve() verifies by default (Full DID Resolver)", () => {
     const result = await resolve(DID, { store: new InMemoryMicroledgerStore(), fetchImpl });
     expect(requested).toEqual([LEDGER_URL]);
     expect(result.didResolutionMetadata.error).toBeUndefined();
-    expect(result.didDocumentMetadata.verified).toBe(true);
-    expect(result.didDocumentMetadata.mode).toBe("full");
+    expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(true);
   });
 
   it("rejects a tampered ledger by default (no options needed)", async () => {
@@ -37,7 +36,9 @@ describe("resolve() verifies by default (Full DID Resolver)", () => {
         : new Response("not found", { status: 404 })) as typeof fetch;
 
     const result = await resolve(DID, { store: null, fetchImpl });
-    expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
+    expect(result.didResolutionMetadata.error).toMatchObject({
+      type: "https://www.w3.org/ns/did#INVALID_DID_DOCUMENT",
+    });
   });
 });
 

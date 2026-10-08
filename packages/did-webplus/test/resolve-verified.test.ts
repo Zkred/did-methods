@@ -51,12 +51,16 @@ describe("selectFromMicroledger", () => {
 
 describe("resolve in full mode (default)", () => {
   it("verifies the full microledger and returns the latest document", async () => {
-    const result = await resolve(DID, { store: new InMemoryMicroledgerStore(), fetchImpl: jsonlFetch([rootDoc, secondDoc]) });
+    const result = await resolve(DID, {
+      store: new InMemoryMicroledgerStore(),
+      fetchImpl: jsonlFetch([rootDoc, secondDoc]),
+      requestCreate: true,
+    });
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocument?.id).toBe(DID);
     expect(result.didDocumentMetadata.versionId).toBe("1");
-    expect(result.didDocumentMetadata.verified).toBe(true);
-    expect(result.didDocumentMetadata.created).toBe(rootDoc.validFrom);
+    expect(result.didDocumentMetadata.created).toBe("2025-11-19T01:43:26Z");
+    expect(result.didDocumentMetadata.createdMilliseconds).toBe(rootDoc.validFrom);
   });
 
   it("resolves versionTime queries from the version history", async () => {
@@ -72,8 +76,9 @@ describe("resolve in full mode (default)", () => {
     const tampered = structuredClone(secondDoc);
     tampered.updateRules = { key: "u7QG2O2Vm22e1g4v6VRxjY9Qgm9XqJAKf_b3cH6Oc4R0bhw" };
     const result = await resolve(DID, { store: null, fetchImpl: jsonlFetch([rootDoc, tampered]) });
-    expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
-    expect(result.didResolutionMetadata.message).toMatch(/verification failed/);
+    const error = result.didResolutionMetadata.error as { type: string; detail: string };
+    expect(error.type).toBe("https://www.w3.org/ns/did#INVALID_DID_DOCUMENT");
+    expect(error.detail).toMatch(/verification failed/);
     expect(result.didDocument).toBeNull();
   });
 

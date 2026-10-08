@@ -1,11 +1,4 @@
-import {
-  DidError,
-  ResolutionErrorCode,
-  canonicalize,
-  fetchJson,
-  toErrorResult,
-  type DidResolutionResult,
-} from "@zkred/did-core";
+import { DidError, ResolutionErrorCode, canonicalize, fetchJson, toErrorResult, type DidResolutionResult } from "@zkred/did-core";
 import { parseDid, parseQuery, schemeForHost, type ResolutionUrlOptions } from "./did.js";
 import { microledgerUrl } from "./controller.js";
 import {
@@ -16,6 +9,18 @@ import {
   type MicroledgerValidationResult,
 } from "./microledger.js";
 import { defaultMicroledgerStore, type MicroledgerStore, type StoredMicroledger } from "./store.js";
+import {
+  WEBPLUS_ERROR_TYPE,
+  WebplusResolutionError,
+  webplusErrorResult,
+  type ResolutionLocalityBooleans,
+} from "./problemDetails.js";
+import {
+  buildDidDocumentMetadata,
+  computeDocLocality,
+  computeMetadataLocality,
+  type WebplusResolutionOptions,
+} from "./resolutionMetadata.js";
 import type { WebplusDidDocument, WebplusDidQuery } from "./types.js";
 
 /**
@@ -24,9 +29,12 @@ import type { WebplusDidDocument, WebplusDidQuery } from "./types.js";
  * - `"full"` (default) — a Full DID Resolver: fetches the DID's microledger,
  *   cryptographically verifies it, and persists the verified portion so that
  *   repeated resolution is a range-based fetch verifying only new documents.
- *   Provides duplicity detection and offline historical resolution.
+ *   Provides duplicity detection and offline historical resolution. The only
+ *   mode that implements the DID Resolution Options / locality rules below.
  * - `"thin"` — a Thin DID Resolver: delegates fetching/verification/archiving
- *   to a trusted VDG (required); a single request per resolution.
+ *   to a trusted VDG (required); a single request per resolution. Fetches
+ *   only the resolved document, so `requestCreate`/`requestNext`/
+ *   `requestLatest`/`localResolutionOnly` are not honored.
  * - `"unverified"` — development/testing only. Fetches the microledger and
  *   enforces the JCS wire-format rule but performs NO cryptographic
  *   verification and trusts the host. Non-conformant; never use in
@@ -34,14 +42,15 @@ import type { WebplusDidDocument, WebplusDidQuery } from "./types.js";
  */
 export type ResolverMode = "full" | "thin" | "unverified";
 
-export interface WebplusResolverOptions extends ResolutionUrlOptions {
+export interface WebplusResolverOptions extends ResolutionUrlOptions, WebplusResolutionOptions {
   /** Resolver mode. Default: `"full"`. */
   mode?: ResolverMode;
   /**
    * Microledger persistence for full mode. Defaults to a shared in-memory
    * store (`defaultMicroledgerStore`); supply your own `MicroledgerStore`
-   * for durable storage, or `null` to disable persistence (every resolution
-   * fetches and verifies the complete microledger).
+   * for durable storage (see `FileMicroledgerStore` at the `./node`
+   * subpath), or `null` to disable persistence (every resolution fetches and
+   * verifies the complete microledger).
    */
   store?: MicroledgerStore | null;
   /** Request timeout in milliseconds. Default: 15000. */
@@ -107,38 +116,39 @@ async function fetchText(
     });
     return { status: response.status, text: await response.text() };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new DidError(ResolutionErrorCode.InternalError, `request to ${url} failed: ${message}`);
+    throw new Error(`request to ${url} failed: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     clearTimeout(timer);
   }
 }
 
-function throwOnValidationErrors(result: MicroledgerValidationResult, url: string): void {
-  if (result.errors.length === 0) return;
-  const detail = result.errors.map((e) => `versionId ${e.versionId}: ${e.message}`).join("; ");
-  throw new DidError(
-    ResolutionErrorCode.InvalidDidDocument,
-    `microledger verification failed for ${url}: ${detail}`,
-  );
+/** Raised by the low-level fetch helpers for anything that means "couldn't get a usable response from the VDR" — eligible for falling back to already-verified local data. Verification/duplicity failures never raise this; they always throw `WebplusResolutionError` directly. */
+class FetchFailure extends Error {}
+
+function invalidDidDocument(message: string, booleans: ResolutionLocalityBooleans): never {
+  throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.InvalidDidDocument, message, booleans);
 }
 
-function parseCanonicalOrThrow(text: string, url: string): WebplusDidDocument[] {
+function parseCanonicalOrThrow(
+  text: string,
+  url: string,
+  booleans: ResolutionLocalityBooleans,
+): WebplusDidDocument[] {
   const { docs, errors } = parseJcsCanonicalLines(text);
-  const invalidJson = errors.find((e) => e.message.includes("not valid JSON"));
-  if (invalidJson) {
-    throw new DidError(
-      ResolutionErrorCode.RepresentationNotSupported,
-      `microledger at ${url}: ${invalidJson.message}`,
-    );
-  }
   if (errors.length > 0) {
-    throw new DidError(
-      ResolutionErrorCode.InvalidDidDocument,
-      `microledger at ${url}: ${errors.map((e) => e.message).join("; ")}`,
-    );
+    invalidDidDocument(`microledger at ${url}: ${errors.map((e) => e.message).join("; ")}`, booleans);
   }
   return docs;
+}
+
+function throwOnValidationErrors(
+  result: MicroledgerValidationResult,
+  url: string,
+  booleans: ResolutionLocalityBooleans,
+): void {
+  if (result.errors.length === 0) return;
+  const detail = result.errors.map((e) => `versionId ${e.versionId}: ${e.message}`).join("; ");
+  invalidDidDocument(`microledger verification failed for ${url}: ${detail}`, booleans);
 }
 
 /**
@@ -159,43 +169,89 @@ const utf8Length = (s: string): number => new TextEncoder().encode(s).length;
 /**
  * Fetch a DID's complete microledger from its VDR (or a VDG), enforcing the
  * JCS wire-format rule. Performs a full (non-range) fetch and no
- * cryptographic verification; `resolve` in full mode builds on top of this.
+ * cryptographic verification; used by `mode: "unverified"`.
  */
 export async function fetchMicroledger(
   did: string,
   options: WebplusResolverOptions = {},
 ): Promise<WebplusDidDocument[]> {
   const url = ledgerUrlFor(did, options);
-  const { status, text } = await fetchText(url, options);
+  const booleans: ResolutionLocalityBooleans = {
+    didDocumentResolvedLocally: false,
+    didDocumentMetadataResolvedLocally: true,
+    fetchedUpdatesFromVDR: true,
+  };
+  let status: number, text: string;
+  try {
+    ({ status, text } = await fetchText(url, options));
+  } catch (err) {
+    throw new WebplusResolutionError(
+      WEBPLUS_ERROR_TYPE.VdrFetchFailed,
+      err instanceof Error ? err.message : String(err),
+      booleans,
+    );
+  }
   if (status === 404) {
-    throw new DidError(ResolutionErrorCode.NotFound, `microledger not found at ${url}`);
+    throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.NotFound, `microledger not found at ${url}`, booleans);
   }
   if (status < 200 || status >= 300) {
-    throw new DidError(ResolutionErrorCode.InternalError, `unexpected HTTP ${status} from ${url}`);
+    throw new WebplusResolutionError(
+      WEBPLUS_ERROR_TYPE.VdrFetchFailed,
+      `unexpected HTTP ${status} from ${url}`,
+      booleans,
+    );
   }
-  const docs = parseCanonicalOrThrow(text, url);
+  const docs = parseCanonicalOrThrow(text, url, booleans);
   if (docs.length === 0) {
-    throw new DidError(ResolutionErrorCode.NotFound, `microledger at ${url} is empty`);
+    throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.NotFound, `microledger at ${url} is empty`, booleans);
   }
   return docs;
 }
 
-/** Select the document a DID URL query refers to from a full microledger. */
+/**
+ * Select the document a DID URL query refers to from a full microledger.
+ * Throws `invalidDidUrl` if `selfHash` and `versionId` are both given and
+ * name different documents, `notFound` if the query matches nothing.
+ */
 export function selectFromMicroledger(
   docs: WebplusDidDocument[],
   query: WebplusDidQuery,
+  booleans: ResolutionLocalityBooleans = {
+    didDocumentResolvedLocally: false,
+    didDocumentMetadataResolvedLocally: true,
+    fetchedUpdatesFromVDR: true,
+  },
 ): WebplusDidDocument {
+  if (query.selfHash !== undefined && query.versionId !== undefined) {
+    const byHash = docs.find((d) => d.selfHash === query.selfHash);
+    const byVersion = docs.find((d) => d.versionId === query.versionId);
+    if (byHash && byVersion && byHash.selfHash !== byVersion.selfHash) {
+      throw new WebplusResolutionError(
+        WEBPLUS_ERROR_TYPE.InvalidDidUrl,
+        `selfHash ${query.selfHash} and versionId ${query.versionId} name different documents`,
+        booleans,
+      );
+    }
+  }
   if (query.selfHash !== undefined) {
     const doc = docs.find((d) => d.selfHash === query.selfHash);
     if (!doc) {
-      throw new DidError(ResolutionErrorCode.NotFound, `no document with selfHash ${query.selfHash}`);
+      throw new WebplusResolutionError(
+        WEBPLUS_ERROR_TYPE.NotFound,
+        `no document with selfHash ${query.selfHash}`,
+        booleans,
+      );
     }
     return doc;
   }
   if (query.versionId !== undefined) {
     const doc = docs.find((d) => d.versionId === query.versionId);
     if (!doc) {
-      throw new DidError(ResolutionErrorCode.NotFound, `no document with versionId ${query.versionId}`);
+      throw new WebplusResolutionError(
+        WEBPLUS_ERROR_TYPE.NotFound,
+        `no document with versionId ${query.versionId}`,
+        booleans,
+      );
     }
     return doc;
   }
@@ -203,9 +259,10 @@ export function selectFromMicroledger(
     const t = Date.parse(query.versionTime);
     const doc = [...docs].reverse().find((d) => Date.parse(d.validFrom) <= t);
     if (!doc) {
-      throw new DidError(
-        ResolutionErrorCode.NotFound,
+      throw new WebplusResolutionError(
+        WEBPLUS_ERROR_TYPE.NotFound,
         `no document was valid at versionTime ${query.versionTime}`,
+        booleans,
       );
     }
     return doc;
@@ -215,147 +272,34 @@ export function selectFromMicroledger(
 
 function successResult(
   doc: WebplusDidDocument,
-  docs: WebplusDidDocument[] | null,
-  extraMetadata: Record<string, unknown>,
+  allDocs: WebplusDidDocument[],
+  options: WebplusResolutionOptions,
+  booleans: ResolutionLocalityBooleans,
 ): DidResolutionResult {
   return {
-    didResolutionMetadata: { contentType: "application/did+json" },
+    didResolutionMetadata: { contentType: "application/did+json", ...booleans },
     didDocument: doc,
-    didDocumentMetadata: {
-      versionId: String(doc.versionId),
-      updated: doc.validFrom,
-      selfHash: doc.selfHash,
-      ...(docs
-        ? { created: docs[0]!.validFrom, latestVersionId: String(docs[docs.length - 1]!.versionId) }
-        : {}),
-      ...extraMetadata,
-    },
+    didDocumentMetadata: buildDidDocumentMetadata(doc, allDocs, options),
   };
-}
-
-/** True when a historical query is answerable from the verified store alone. */
-function servableOffline(stored: StoredMicroledger, query: WebplusDidQuery): boolean {
-  if (query.selfHash !== undefined) {
-    return stored.docs.some((d) => d.selfHash === query.selfHash);
-  }
-  if (query.versionId !== undefined) {
-    return query.versionId < stored.docs.length;
-  }
-  if (query.versionTime !== undefined) {
-    // Final only if a stored document strictly supersedes the queried time.
-    const t = Date.parse(query.versionTime);
-    return stored.docs.some((d) => Date.parse(d.validFrom) > t);
-  }
-  return false; // "latest" always requires checking for updates
-}
-
-async function resolveFull(
-  did: string,
-  query: WebplusDidQuery,
-  options: WebplusResolverOptions,
-): Promise<DidResolutionResult> {
-  const store = options.store === null ? undefined : (options.store ?? defaultMicroledgerStore);
-  const stored = await store?.get(did);
-  const url = ledgerUrlFor(did, options);
-  const verifierOpt = options.verifier !== undefined ? { verifier: options.verifier } : {};
-
-  if (stored && servableOffline(stored, query)) {
-    return successResult(selectFromMicroledger(stored.docs, query), stored.docs, {
-      verified: true,
-      mode: "full",
-      cached: true,
-    });
-  }
-
-  let docs: WebplusDidDocument[];
-  let raw: string;
-
-  if (stored) {
-    const storedRaw = stripTrailingNewline(stored.raw);
-    // Spec: the range MUST start immediately after the final `}` of the last
-    // archived document (byte 0 when nothing is archived).
-    const offset = utf8Length(storedRaw);
-    const { status, text } = await fetchText(url, options, offset);
-    if (status === 416) {
-      // nothing new since our verified copy
-      docs = stored.docs;
-      raw = storedRaw;
-    } else if (status === 206) {
-      // The chunk begins with the newline separating the last archived
-      // document from any new ones (strip that separator byte before strict
-      // JSONL parsing); a bare newline (or empty chunk) means the server has
-      // nothing new but does store a trailing newline.
-      const chunk = text.startsWith("\n") ? text.slice(1) : text;
-      const newDocs = parseCanonicalOrThrow(chunk, url);
-      if (newDocs.length === 0) {
-        docs = stored.docs;
-        raw = storedRaw;
-      } else {
-        const result = await validateMicroledgerExtension(stored.docs, newDocs, {
-          expectedDid: did,
-          ...verifierOpt,
-        });
-        throwOnDuplicityOrErrors(result, url, stored, newDocs);
-        docs = [...stored.docs, ...newDocs];
-        raw = storedRaw + "\n" + rawOf(newDocs);
-      }
-    } else if (status >= 200 && status < 300) {
-      // server ignored the Range header; got the full ledger
-      const fetched = parseCanonicalOrThrow(text, url);
-      assertNoDuplicity(stored, fetched, url);
-      const newDocs = fetched.slice(stored.docs.length);
-      const result = await validateMicroledgerExtension(stored.docs, newDocs, {
-        expectedDid: did,
-        ...verifierOpt,
-      });
-      throwOnValidationErrors(result, url);
-      docs = [...stored.docs, ...newDocs];
-      raw = rawOf(docs);
-    } else if (status === 404) {
-      throw new DidError(ResolutionErrorCode.NotFound, `microledger not found at ${url}`);
-    } else {
-      throw new DidError(ResolutionErrorCode.InternalError, `unexpected HTTP ${status} from ${url}`);
-    }
-  } else {
-    const { status, text } = await fetchText(url, options);
-    if (status === 404) {
-      throw new DidError(ResolutionErrorCode.NotFound, `microledger not found at ${url}`);
-    }
-    if (status < 200 || status >= 300) {
-      throw new DidError(ResolutionErrorCode.InternalError, `unexpected HTTP ${status} from ${url}`);
-    }
-    docs = parseCanonicalOrThrow(text, url);
-    if (docs.length === 0) {
-      throw new DidError(ResolutionErrorCode.NotFound, `microledger at ${url} is empty`);
-    }
-    const result = await validateMicroledger(docs, { expectedDid: did, ...verifierOpt });
-    throwOnValidationErrors(result, url);
-    raw = rawOf(docs);
-  }
-
-  await store?.put(did, { raw, docs });
-  return successResult(selectFromMicroledger(docs, query), docs, {
-    verified: true,
-    mode: "full",
-  });
 }
 
 function assertNoDuplicity(
   stored: StoredMicroledger,
   fetched: WebplusDidDocument[],
   url: string,
+  booleans: ResolutionLocalityBooleans,
 ): void {
   if (fetched.length < stored.docs.length) {
-    throw new DidError(
-      ResolutionErrorCode.InvalidDidDocument,
+    invalidDidDocument(
       `duplicity detected at ${url}: served microledger (${fetched.length} documents) is shorter than the verified history (${stored.docs.length} documents)`,
+      booleans,
     );
   }
   for (let i = 0; i < stored.docs.length; i++) {
     if (fetched[i]!.selfHash !== stored.docs[i]!.selfHash) {
-      throw new DidError(
-        ResolutionErrorCode.InvalidDidDocument,
+      invalidDidDocument(
         `duplicity detected at ${url}: versionId ${i} selfHash ${fetched[i]!.selfHash} contradicts previously verified ${stored.docs[i]!.selfHash}`,
+        booleans,
       );
     }
   }
@@ -366,16 +310,186 @@ function throwOnDuplicityOrErrors(
   url: string,
   stored: StoredMicroledger,
   newDocs: WebplusDidDocument[],
+  booleans: ResolutionLocalityBooleans,
 ): void {
   const first = newDocs[0];
   const last = stored.docs[stored.docs.length - 1]!;
   if (first && first.prevDIDDocumentSelfHash !== last.selfHash) {
-    throw new DidError(
-      ResolutionErrorCode.InvalidDidDocument,
+    invalidDidDocument(
       `duplicity detected at ${url}: update for versionId ${first.versionId} chains from ${first.prevDIDDocumentSelfHash}, contradicting previously verified ${last.selfHash}`,
+      booleans,
     );
   }
-  throwOnValidationErrors(result, url);
+  throwOnValidationErrors(result, url, booleans);
+}
+
+/**
+ * Fetch whatever is new since `stored` (or the whole microledger when
+ * `stored` is undefined), verify it, and return the merged document list.
+ * Throws `FetchFailure` for anything that means the VDR couldn't be reached
+ * or read usefully (network error, an unexpected status, a 404 continuing a
+ * known history) — `resolveFull` may fall back to already-verified local
+ * data for those. Verification/duplicity failures always throw
+ * `WebplusResolutionError` directly: served data that fails to verify is
+ * never grounds for silently falling back to older local data.
+ */
+async function fetchAndMergeMicroledger(
+  did: string,
+  url: string,
+  stored: StoredMicroledger | undefined,
+  options: WebplusResolverOptions,
+  verifierOpt: { verifier?: CryptoVerifier | null },
+  booleans: ResolutionLocalityBooleans,
+): Promise<WebplusDidDocument[]> {
+  if (stored) {
+    const storedRaw = stripTrailingNewline(stored.raw);
+    // Spec: the range MUST start immediately after the final `}` of the last
+    // archived document (byte 0 when nothing is archived).
+    const offset = utf8Length(storedRaw);
+    let status: number, text: string;
+    try {
+      ({ status, text } = await fetchText(url, options, offset));
+    } catch (err) {
+      throw new FetchFailure(err instanceof Error ? err.message : String(err));
+    }
+    if (status === 416) {
+      return stored.docs; // nothing new since our verified copy
+    }
+    if (status === 206) {
+      // The chunk begins with the newline separating the last archived
+      // document from any new ones (strip that separator byte before strict
+      // JSONL parsing); a bare newline (or empty chunk) means the server has
+      // nothing new but does store a trailing newline.
+      const chunk = text.startsWith("\n") ? text.slice(1) : text;
+      const newDocs = parseCanonicalOrThrow(chunk, url, booleans);
+      if (newDocs.length === 0) return stored.docs;
+      const result = await validateMicroledgerExtension(stored.docs, newDocs, {
+        expectedDid: did,
+        ...verifierOpt,
+      });
+      throwOnDuplicityOrErrors(result, url, stored, newDocs, booleans);
+      return [...stored.docs, ...newDocs];
+    }
+    if (status >= 200 && status < 300) {
+      // server ignored the Range header; got the full ledger
+      const fetched = parseCanonicalOrThrow(text, url, booleans);
+      assertNoDuplicity(stored, fetched, url, booleans);
+      const newDocs = fetched.slice(stored.docs.length);
+      const result = await validateMicroledgerExtension(stored.docs, newDocs, {
+        expectedDid: did,
+        ...verifierOpt,
+      });
+      throwOnValidationErrors(result, url, booleans);
+      return [...stored.docs, ...newDocs];
+    }
+    // Any other status (including 404) while continuing a known history: the
+    // VDR may be transiently broken. Not a verification failure, so eligible
+    // for a local-data fallback in the caller.
+    throw new FetchFailure(`unexpected HTTP ${status} from ${url}`);
+  }
+
+  let status: number, text: string;
+  try {
+    ({ status, text } = await fetchText(url, options));
+  } catch (err) {
+    throw new FetchFailure(err instanceof Error ? err.message : String(err));
+  }
+  if (status === 404) {
+    // No prior local data, and the VDR affirmatively has nothing: a
+    // definitive answer, not a transient fetch failure.
+    throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.NotFound, `microledger not found at ${url}`, booleans);
+  }
+  if (status < 200 || status >= 300) {
+    throw new FetchFailure(`unexpected HTTP ${status} from ${url}`);
+  }
+  const docs = parseCanonicalOrThrow(text, url, booleans);
+  if (docs.length === 0) {
+    throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.NotFound, `microledger at ${url} is empty`, booleans);
+  }
+  const result = await validateMicroledger(docs, { expectedDid: did, ...verifierOpt });
+  throwOnValidationErrors(result, url, booleans);
+  return docs;
+}
+
+async function resolveFull(
+  did: string,
+  query: WebplusDidQuery,
+  options: WebplusResolverOptions,
+): Promise<DidResolutionResult> {
+  const store = options.store === null ? undefined : (options.store ?? defaultMicroledgerStore);
+  const stored = await store?.get(did);
+  const localDocs = stored?.docs ?? [];
+  const url = ledgerUrlFor(did, options);
+  const verifierOpt = options.verifier !== undefined ? { verifier: options.verifier } : {};
+  const isPlainQuery =
+    query.selfHash === undefined && query.versionId === undefined && query.versionTime === undefined;
+
+  const locality = computeDocLocality(localDocs, query);
+
+  if (locality.status === "conflict") {
+    throw new WebplusResolutionError(
+      WEBPLUS_ERROR_TYPE.InvalidDidUrl,
+      "selfHash and versionId in the same query name different local documents",
+      { didDocumentResolvedLocally: false, didDocumentMetadataResolvedLocally: true, fetchedUpdatesFromVDR: false },
+    );
+  }
+  if (locality.status === "known-absent") {
+    throw new WebplusResolutionError(
+      WEBPLUS_ERROR_TYPE.NotFound,
+      "a local deactivation proves the requested document does not exist",
+      { didDocumentResolvedLocally: false, didDocumentMetadataResolvedLocally: true, fetchedUpdatesFromVDR: false },
+    );
+  }
+
+  const resolvedLocally = locality.status === "found" ? locality.doc : undefined;
+  const metadataLocal = computeMetadataLocality(localDocs, resolvedLocally, options);
+  const needsFetch = resolvedLocally === undefined || !metadataLocal;
+  const preFetchBooleans: ResolutionLocalityBooleans = {
+    didDocumentResolvedLocally: resolvedLocally !== undefined,
+    didDocumentMetadataResolvedLocally: metadataLocal,
+    fetchedUpdatesFromVDR: false,
+  };
+
+  if (!needsFetch) {
+    return successResult(resolvedLocally!, localDocs, options, preFetchBooleans);
+  }
+
+  if (options.localResolutionOnly) {
+    throw new WebplusResolutionError(
+      WEBPLUS_ERROR_TYPE.LocalResolutionNotPossible,
+      "localResolutionOnly is set and the requested document or metadata is not locally satisfiable",
+      preFetchBooleans,
+    );
+  }
+
+  const fetchedBooleans: ResolutionLocalityBooleans = { ...preFetchBooleans, fetchedUpdatesFromVDR: true };
+
+  let allDocs: WebplusDidDocument[];
+  try {
+    allDocs = await fetchAndMergeMicroledger(did, url, stored, options, verifierOpt, fetchedBooleans);
+  } catch (err) {
+    if (err instanceof FetchFailure) {
+      // The VDR couldn't be reached/read. If we already have a verified
+      // document to answer with — the specific one requested, or (for a
+      // plain DID, which the locality rules never call "locally
+      // satisfiable" on its own) the local tip as a best-effort answer —
+      // succeed from it rather than fail outright. A query for a *specific*
+      // version/selfHash/versionTime we don't have locally gets no such
+      // fallback: returning a different document than the one asked for
+      // would be wrong, not just best-effort.
+      const fallbackDoc =
+        resolvedLocally ?? (isPlainQuery && localDocs.length > 0 ? localDocs[localDocs.length - 1] : undefined);
+      if (fallbackDoc !== undefined) {
+        return successResult(fallbackDoc, localDocs, options, fetchedBooleans);
+      }
+      throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.VdrFetchFailed, err.message, fetchedBooleans);
+    }
+    throw err; // verification/duplicity failures: never fall back to local data
+  }
+
+  await store?.put(did, { raw: rawOf(allDocs), docs: allDocs });
+  const finalDoc = selectFromMicroledger(allDocs, query, fetchedBooleans);
+  return successResult(finalDoc, allDocs, options, fetchedBooleans);
 }
 
 async function resolveThin(
@@ -393,7 +507,14 @@ async function resolveThin(
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
   });
-  return successResult(doc, null, { verified: false, mode: "thin" });
+  // Thin mode fetches only the resolved document, not the full microledger,
+  // so create/next/latest metadata (which need the rest of the history)
+  // can't be honored here regardless of what was requested.
+  return successResult(doc, [doc], {}, {
+    didDocumentResolvedLocally: false,
+    didDocumentMetadataResolvedLocally: true,
+    fetchedUpdatesFromVDR: true,
+  });
 }
 
 async function resolveUnverified(
@@ -402,10 +523,12 @@ async function resolveUnverified(
   options: WebplusResolverOptions,
 ): Promise<DidResolutionResult> {
   const docs = await fetchMicroledger(did, options);
-  return successResult(selectFromMicroledger(docs, query), docs, {
-    verified: false,
-    mode: "unverified",
-  });
+  const booleans: ResolutionLocalityBooleans = {
+    didDocumentResolvedLocally: false,
+    didDocumentMetadataResolvedLocally: true,
+    fetchedUpdatesFromVDR: true,
+  };
+  return successResult(selectFromMicroledger(docs, query, booleans), docs, options, booleans);
 }
 
 /**
@@ -416,9 +539,19 @@ async function resolveUnverified(
  * from its VDR (or a VDG) via the spec's single resolution URL
  * (`…/did-documents.jsonl`), cryptographically verified, and persisted, so
  * repeated resolution issues a range-based fetch and verifies only new
- * documents, detects duplicity (forks/rollbacks), and answers historical
- * queries offline. `mode: "thin"` delegates to a trusted VDG.
- * `mode: "unverified"` is for development/testing only.
+ * documents, detects duplicity (forks/rollbacks), and answers queries
+ * already satisfiable from local data with zero network requests. The five
+ * DID Resolution Options (`requestCreate`, `requestNext`, `requestLatest`,
+ * `requestDeactivated`, `localResolutionOnly`) are honored in this mode.
+ * `mode: "thin"` delegates to a trusted VDG. `mode: "unverified"` is for
+ * development/testing only.
+ *
+ * Resolution-process failures (not found, conflicting query parameters,
+ * local resolution not possible, VDR unreachable, failed verification) carry
+ * an RFC 9457 Problem Details object as `didResolutionMetadata.error`,
+ * matching the spec's reference implementations. A malformed DID string
+ * (a syntax error, before resolution begins) still carries the standard
+ * `@zkred/did-core` short error code.
  */
 export async function resolve(
   didUrl: string,
@@ -440,6 +573,9 @@ export async function resolve(
         return await resolveFull(parsed.did, query, options);
     }
   } catch (err) {
+    if (err instanceof WebplusResolutionError) {
+      return webplusErrorResult(err);
+    }
     return toErrorResult(err);
   }
 }

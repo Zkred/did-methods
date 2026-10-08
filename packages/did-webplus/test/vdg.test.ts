@@ -41,7 +41,7 @@ describe("resolution through a VDG", () => {
 
     const result = await resolve(DID, { vdg: "vdg.example.com", store: null, fetchImpl });
     expect(result.didResolutionMetadata.error).toBeUndefined();
-    expect(result.didDocumentMetadata.verified).toBe(true);
+    expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(true);
     expect(result.didDocumentMetadata.versionId).toBe("1");
   });
 });

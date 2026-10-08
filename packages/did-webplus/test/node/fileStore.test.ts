@@ -82,7 +82,8 @@ describe("FileMicroledgerStore", () => {
 
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("0");
-    expect(result.didDocumentMetadata.cached).toBe(true);
+    expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
+    expect(result.didResolutionMetadata.didDocumentResolvedLocally).toBe(true);
     expect(verifier.selfHashCalls).toBe(0);
   });
 });

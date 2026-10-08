@@ -2,6 +2,8 @@ export * from "./types.js";
 export * from "./did.js";
 export * from "./microledger.js";
 export * from "./resolver.js";
+export * from "./resolutionMetadata.js";
+export * from "./problemDetails.js";
 export * from "./store.js";
 export * from "./multiformat.js";
 export * from "./jws.js";

@@ -18,8 +18,6 @@ describe("resolve (unverified mode, development only)", () => {
     expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocument?.id).toBe(DID);
     expect(result.didDocumentMetadata.versionId).toBe("1");
-    expect(result.didDocumentMetadata.verified).toBe(false);
-    expect(result.didDocumentMetadata.mode).toBe("unverified");
   });
 
   it("selects a specific version via the versionId query", async () => {
@@ -35,7 +33,9 @@ describe("resolve (unverified mode, development only)", () => {
 describe("resolve error mapping", () => {
   it("returns notFound for a missing microledger", async () => {
     const result = await resolve(DID, { store: null, fetchImpl: jsonlFetch([]) });
-    expect(result.didResolutionMetadata.error).toBe("notFound");
+    expect(result.didResolutionMetadata.error).toMatchObject({
+      type: "https://www.w3.org/ns/did#NOT_FOUND",
+    });
     expect(result.didDocument).toBeNull();
   });
 

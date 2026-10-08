@@ -12,6 +12,11 @@ const LEDGER_URL = `https://example.com/${rootDoc.selfHash}/did-documents.jsonl`
 const jsonl = (docs: WebplusDidDocument[]) => docs.map((d) => canonicalize(d)).join("\n") + "\n";
 const byteLen = (s: string) => new TextEncoder().encode(s).length;
 
+/** did:webplus resolution errors carry an RFC 9457 object, not a string code. */
+function problemDetails(result: { didResolutionMetadata: { error?: unknown } }): { type: string; detail: string } {
+  return result.didResolutionMetadata.error as { type: string; detail: string };
+}
+
 /** A fake VDR serving an append-only ledger with HTTP Range support. */
 function fakeVdr(getDocs: () => WebplusDidDocument[]) {
   const requests: Array<{ url: string; range?: string }> = [];
@@ -98,8 +103,8 @@ describe("Full DID Resolver persistence", () => {
       }),
     );
     const result = await resolve(root.id, { store, verifier, fetchImpl });
+    expect(result.didResolutionMetadata.error).toBeUndefined();
     expect(result.didDocumentMetadata.versionId).toBe("1");
-    expect(result.didDocumentMetadata.verified).toBe(true);
     expect(verifier.selfHashCalls).toBe(2); // only the new document
   });
 
@@ -115,13 +120,15 @@ describe("Full DID Resolver persistence", () => {
     const byVersion = await resolve(`${DID}?versionId=0`, { store, fetchImpl: offlineFetch });
     expect(byVersion.didResolutionMetadata.error).toBeUndefined();
     expect(byVersion.didDocumentMetadata.versionId).toBe("0");
-    expect(byVersion.didDocumentMetadata.cached).toBe(true);
+    expect(byVersion.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
+    expect(byVersion.didResolutionMetadata.didDocumentResolvedLocally).toBe(true);
 
     const bySelfHash = await resolve(`${DID}?selfHash=${rootDoc.selfHash}`, {
       store,
       fetchImpl: offlineFetch,
     });
     expect(bySelfHash.didResolutionMetadata.error).toBeUndefined();
+    expect(bySelfHash.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
 
     const byTime = await resolve(`${DID}?versionTime=2025-11-19T01:43:26.985Z`, {
       store,
@@ -129,6 +136,7 @@ describe("Full DID Resolver persistence", () => {
     });
     expect(byTime.didResolutionMetadata.error).toBeUndefined();
     expect(byTime.didDocumentMetadata.versionId).toBe("0");
+    expect(byTime.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
   });
 
   it("detects duplicity when a range update contradicts the verified tip", async () => {
@@ -142,8 +150,9 @@ describe("Full DID Resolver persistence", () => {
     const { fetchImpl: forkFetch } = fakeVdr(() => [rootDoc, secondDoc, forged]);
 
     const result = await resolve(DID, { store, fetchImpl: forkFetch });
-    expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
-    expect(result.didResolutionMetadata.message).toMatch(/duplicity/);
+    const error = problemDetails(result);
+    expect(error.type).toBe("https://www.w3.org/ns/did#INVALID_DID_DOCUMENT");
+    expect(error.detail).toMatch(/duplicity/);
   });
 
   it("detects duplicity when a full refetch rewrites verified history", async () => {
@@ -159,8 +168,9 @@ describe("Full DID Resolver persistence", () => {
         : new Response("nf", { status: 404 })) as typeof fetch;
 
     const result = await resolve(DID, { store, fetchImpl: noRangeFetch });
-    expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
-    expect(result.didResolutionMetadata.message).toMatch(/duplicity/);
+    const error = problemDetails(result);
+    expect(error.type).toBe("https://www.w3.org/ns/did#INVALID_DID_DOCUMENT");
+    expect(error.detail).toMatch(/duplicity/);
   });
 
   it("detects rollback: a served ledger shorter than verified history", async () => {
@@ -174,8 +184,9 @@ describe("Full DID Resolver persistence", () => {
         : new Response("nf", { status: 404 })) as typeof fetch;
 
     const result = await resolve(DID, { store, fetchImpl: truncatedFetch });
-    expect(result.didResolutionMetadata.error).toBe("invalidDidDocument");
-    expect(result.didResolutionMetadata.message).toMatch(/duplicity|shorter/);
+    const error = problemDetails(result);
+    expect(error.type).toBe("https://www.w3.org/ns/did#INVALID_DID_DOCUMENT");
+    expect(error.detail).toMatch(/duplicity|shorter/);
   });
 
   it("store: null disables persistence (no Range header on refetch)", async () => {

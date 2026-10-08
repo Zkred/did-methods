@@ -55,7 +55,13 @@ export interface DidDocument {
 
 export interface DidResolutionMetadata {
   contentType?: string;
-  error?: string;
+  /**
+   * The error code from the resolution process. Most DID methods use a short
+   * ASCII keyword (the DID Core convention, e.g. `"notFound"`); a method
+   * whose own spec mandates a structured error (e.g. an RFC 9457 Problem
+   * Details object, as did:webplus does) may use an object instead.
+   */
+  error?: string | object;
   message?: string;
   [key: string]: unknown;
 }
