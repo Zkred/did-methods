@@ -168,7 +168,7 @@ describe("local-only-matrix", () => {
       localResolutionOnly: true,
     });
     expect(errorOf(result).type).toBe(
-      "https://ledgerdomain.github.io/did-webplus-spec#LOCAL_RESOLUTION_NOT_POSSIBLE",
+      "https://ledgerdomain.github.io/did-webplus-spec/#LOCAL_RESOLUTION_NOT_POSSIBLE",
     );
     expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
     expect(requestCount()).toBe(0);
@@ -195,7 +195,7 @@ describe("local-only-matrix", () => {
     const { fetchImpl, requestCount } = fakeVdr(url, () => docs);
     const result = await resolve(did, { store, fetchImpl, localResolutionOnly: true });
     expect(errorOf(result).type).toBe(
-      "https://ledgerdomain.github.io/did-webplus-spec#LOCAL_RESOLUTION_NOT_POSSIBLE",
+      "https://ledgerdomain.github.io/did-webplus-spec/#LOCAL_RESOLUTION_NOT_POSSIBLE",
     );
     expect(requestCount()).toBe(0);
   });
@@ -390,24 +390,41 @@ describe("deactivated-known-absence", () => {
 });
 
 describe("fetch-failed-with-local-document", () => {
-  it("succeeds from the store when the VDR errors but the document is already verified locally", async () => {
+  it("fails closed when a required fetch errors, even with the document already local", async () => {
     const { did, url, docs } = buildLedger();
     const store = new InMemoryMicroledgerStore();
     const { fetchImpl: warm } = fakeVdr(url, () => docs);
     await resolve(did, { store, fetchImpl: warm });
 
-    // A fetch is still required (plain DID), but the VDR errors on it.
+    // versionId=1 is local, but requestLatest needs fresh data and the VDR
+    // errors: answering from the store would hide a newer key or a
+    // deactivation from anyone who can block the VDR.
+    const { fetchImpl } = fakeVdr(url, () => docs, 503);
+    const result = await resolve(`${did}?versionId=1`, { store, fetchImpl, requestLatest: true });
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
+    expect(result.didResolutionMetadata).toMatchObject({
+      fetchedUpdatesFromVDR: true,
+      didDocumentResolvedLocally: true,
+      didDocumentMetadataResolvedLocally: false,
+    });
+  });
+
+  it("fails closed for a plain DID when the VDR errors, rather than serving the local tip", async () => {
+    const { did, url, docs } = buildLedger();
+    const store = new InMemoryMicroledgerStore();
+    const { fetchImpl: warm } = fakeVdr(url, () => docs);
+    await resolve(did, { store, fetchImpl: warm });
+
     const { fetchImpl } = fakeVdr(url, () => docs, 503);
     const result = await resolve(did, { store, fetchImpl });
-    expect(result.didResolutionMetadata.error).toBeUndefined();
-    expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(true);
-    expect(result.didDocumentMetadata.versionId).toBe("3");
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
+    expect(result.didDocument).toBeNull();
   });
 
   it("fails VDR_FETCH_FAILED when the VDR errors and nothing is known locally", async () => {
     const { did, url, docs } = buildLedger();
     const { fetchImpl } = fakeVdr(url, () => docs, 503);
     const result = await resolve(did, { store: new InMemoryMicroledgerStore(), fetchImpl });
-    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec#VDR_FETCH_FAILED");
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
   });
 });

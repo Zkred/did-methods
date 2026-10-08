@@ -122,7 +122,7 @@ async function fetchText(
   }
 }
 
-/** Raised by the low-level fetch helpers for anything that means "couldn't get a usable response from the VDR" — eligible for falling back to already-verified local data. Verification/duplicity failures never raise this; they always throw `WebplusResolutionError` directly. */
+/** Raised by the low-level fetch helpers for anything that means "couldn't get a usable response from the VDR"; reported as `VDR_FETCH_FAILED`. */
 class FetchFailure extends Error {}
 
 function invalidDidDocument(message: string, booleans: ResolutionLocalityBooleans): never {
@@ -223,9 +223,9 @@ export function selectFromMicroledger(
   },
 ): WebplusDidDocument {
   if (query.selfHash !== undefined && query.versionId !== undefined) {
-    const byHash = docs.find((d) => d.selfHash === query.selfHash);
-    const byVersion = docs.find((d) => d.versionId === query.versionId);
-    if (byHash && byVersion && byHash.selfHash !== byVersion.selfHash) {
+    const known =
+      docs.find((d) => d.selfHash === query.selfHash) ?? docs.find((d) => d.versionId === query.versionId);
+    if (known && (known.selfHash !== query.selfHash || known.versionId !== query.versionId)) {
       throw new WebplusResolutionError(
         WEBPLUS_ERROR_TYPE.InvalidDidUrl,
         `selfHash ${query.selfHash} and versionId ${query.versionId} name different documents`,
@@ -328,10 +328,8 @@ function throwOnDuplicityOrErrors(
  * `stored` is undefined), verify it, and return the merged document list.
  * Throws `FetchFailure` for anything that means the VDR couldn't be reached
  * or read usefully (network error, an unexpected status, a 404 continuing a
- * known history) — `resolveFull` may fall back to already-verified local
- * data for those. Verification/duplicity failures always throw
- * `WebplusResolutionError` directly: served data that fails to verify is
- * never grounds for silently falling back to older local data.
+ * known history), which `resolveFull` reports as `VDR_FETCH_FAILED`.
+ * Verification/duplicity failures throw `WebplusResolutionError` directly.
  */
 async function fetchAndMergeMicroledger(
   did: string,
@@ -383,8 +381,8 @@ async function fetchAndMergeMicroledger(
       return [...stored.docs, ...newDocs];
     }
     // Any other status (including 404) while continuing a known history: the
-    // VDR may be transiently broken. Not a verification failure, so eligible
-    // for a local-data fallback in the caller.
+    // VDR may be transiently broken, which is a fetch failure rather than a
+    // definitive notFound.
     throw new FetchFailure(`unexpected HTTP ${status} from ${url}`);
   }
 
@@ -421,8 +419,6 @@ async function resolveFull(
   const localDocs = stored?.docs ?? [];
   const url = ledgerUrlFor(did, options);
   const verifierOpt = options.verifier !== undefined ? { verifier: options.verifier } : {};
-  const isPlainQuery =
-    query.selfHash === undefined && query.versionId === undefined && query.versionTime === undefined;
 
   const locality = computeDocLocality(localDocs, query);
 
@@ -469,22 +465,14 @@ async function resolveFull(
     allDocs = await fetchAndMergeMicroledger(did, url, stored, options, verifierOpt, fetchedBooleans);
   } catch (err) {
     if (err instanceof FetchFailure) {
-      // The VDR couldn't be reached/read. If we already have a verified
-      // document to answer with — the specific one requested, or (for a
-      // plain DID, which the locality rules never call "locally
-      // satisfiable" on its own) the local tip as a best-effort answer —
-      // succeed from it rather than fail outright. A query for a *specific*
-      // version/selfHash/versionTime we don't have locally gets no such
-      // fallback: returning a different document than the one asked for
-      // would be wrong, not just best-effort.
-      const fallbackDoc =
-        resolvedLocally ?? (isPlainQuery && localDocs.length > 0 ? localDocs[localDocs.length - 1] : undefined);
-      if (fallbackDoc !== undefined) {
-        return successResult(fallbackDoc, localDocs, options, fetchedBooleans);
-      }
+      // Fail closed. A fetch is only attempted when the local prefix can't
+      // answer on its own (a plain DID, or metadata such as latest/next/
+      // deactivated that needs fresh data), so answering from local data here
+      // would let anyone who can block the VDR serve a rotated-out key or
+      // hide a deactivation behind a "successful" resolution.
       throw new WebplusResolutionError(WEBPLUS_ERROR_TYPE.VdrFetchFailed, err.message, fetchedBooleans);
     }
-    throw err; // verification/duplicity failures: never fall back to local data
+    throw err;
   }
 
   await store?.put(did, { raw: rawOf(allDocs), docs: allDocs });

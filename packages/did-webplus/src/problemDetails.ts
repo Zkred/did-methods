@@ -13,8 +13,8 @@ export const WEBPLUS_ERROR_TYPE = {
   NotFound: "https://www.w3.org/ns/did#NOT_FOUND",
   InvalidDidUrl: "https://www.w3.org/ns/did#INVALID_DID_URL",
   LocalResolutionNotPossible:
-    "https://ledgerdomain.github.io/did-webplus-spec#LOCAL_RESOLUTION_NOT_POSSIBLE",
-  VdrFetchFailed: "https://ledgerdomain.github.io/did-webplus-spec#VDR_FETCH_FAILED",
+    "https://ledgerdomain.github.io/did-webplus-spec/#LOCAL_RESOLUTION_NOT_POSSIBLE",
+  VdrFetchFailed: "https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED",
   InvalidDidDocument: "https://www.w3.org/ns/did#INVALID_DID_DOCUMENT",
 } as const;
 

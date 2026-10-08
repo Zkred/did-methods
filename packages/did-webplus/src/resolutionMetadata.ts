@@ -77,9 +77,13 @@ export function computeDocLocality(
     const byHash = localDocs.find((d) => d.selfHash === query.selfHash);
     const byVersion =
       query.versionId >= 0 && query.versionId < localDocs.length ? localDocs[query.versionId] : undefined;
-    if (byHash && byVersion) {
-      return byHash.selfHash === byVersion.selfHash
-        ? { status: "found", doc: byHash }
+    // Either match pins down the other value: a local document with that
+    // selfHash has a definite versionId (and vice versa), so a disagreement is
+    // provable without fetching.
+    const known = byHash ?? byVersion;
+    if (known) {
+      return known.selfHash === query.selfHash && known.versionId === query.versionId
+        ? { status: "found", doc: known }
         : { status: "conflict" };
     }
     return complete ? { status: "known-absent" } : { status: "needs-fetch" };

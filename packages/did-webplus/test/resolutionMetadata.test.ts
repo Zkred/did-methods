@@ -117,11 +117,20 @@ describe("computeDocLocality", () => {
     });
   });
 
-  it("selfHash and versionId, only one locally known: needs-fetch (or known-absent if complete)", () => {
+  it("selfHash and versionId, only one locally known: still a conflict, since it pins the other", () => {
     expect(computeDocLocality(docs, { selfHash: v1.selfHash, versionId: 9 })).toEqual({
+      status: "conflict",
+    });
+    expect(computeDocLocality(docs, { selfHash: "uHiAunknown", versionId: 1 })).toEqual({
+      status: "conflict",
+    });
+  });
+
+  it("selfHash and versionId, neither locally known: needs-fetch (or known-absent if complete)", () => {
+    expect(computeDocLocality(docs, { selfHash: "uHiAunknown", versionId: 9 })).toEqual({
       status: "needs-fetch",
     });
-    expect(computeDocLocality(docsDeactivated, { selfHash: v1.selfHash, versionId: 9 })).toEqual({
+    expect(computeDocLocality(docsDeactivated, { selfHash: "uHiAunknown", versionId: 9 })).toEqual({
       status: "known-absent",
     });
   });
