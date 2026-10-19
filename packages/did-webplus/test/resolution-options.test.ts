@@ -168,7 +168,7 @@ describe("local-only-matrix", () => {
       localResolutionOnly: true,
     });
     expect(errorOf(result).type).toBe(
-      "https://ledgerdomain.github.io/did-webplus-spec/#LOCAL_RESOLUTION_NOT_POSSIBLE",
+      "https://ledgerdomain.github.io/did-webplus-spec#LOCAL_RESOLUTION_NOT_POSSIBLE",
     );
     expect(result.didResolutionMetadata.fetchedUpdatesFromVDR).toBe(false);
     expect(requestCount()).toBe(0);
@@ -195,7 +195,7 @@ describe("local-only-matrix", () => {
     const { fetchImpl, requestCount } = fakeVdr(url, () => docs);
     const result = await resolve(did, { store, fetchImpl, localResolutionOnly: true });
     expect(errorOf(result).type).toBe(
-      "https://ledgerdomain.github.io/did-webplus-spec/#LOCAL_RESOLUTION_NOT_POSSIBLE",
+      "https://ledgerdomain.github.io/did-webplus-spec#LOCAL_RESOLUTION_NOT_POSSIBLE",
     );
     expect(requestCount()).toBe(0);
   });
@@ -401,7 +401,7 @@ describe("fetch-failed-with-local-document", () => {
     // deactivation from anyone who can block the VDR.
     const { fetchImpl } = fakeVdr(url, () => docs, 503);
     const result = await resolve(`${did}?versionId=1`, { store, fetchImpl, requestLatest: true });
-    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec#VDR_FETCH_FAILED");
     expect(result.didResolutionMetadata).toMatchObject({
       fetchedUpdatesFromVDR: true,
       didDocumentResolvedLocally: true,
@@ -417,7 +417,7 @@ describe("fetch-failed-with-local-document", () => {
 
     const { fetchImpl } = fakeVdr(url, () => docs, 503);
     const result = await resolve(did, { store, fetchImpl });
-    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec#VDR_FETCH_FAILED");
     expect(result.didDocument).toBeNull();
   });
 
@@ -425,6 +425,6 @@ describe("fetch-failed-with-local-document", () => {
     const { did, url, docs } = buildLedger();
     const { fetchImpl } = fakeVdr(url, () => docs, 503);
     const result = await resolve(did, { store: new InMemoryMicroledgerStore(), fetchImpl });
-    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec/#VDR_FETCH_FAILED");
+    expect(errorOf(result).type).toBe("https://ledgerdomain.github.io/did-webplus-spec#VDR_FETCH_FAILED");
   });
 });
